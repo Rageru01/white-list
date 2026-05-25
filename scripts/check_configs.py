@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
-import base64, socket, ssl, sys, urllib.request, urllib.error
+import base64, socket, ssl, sys, urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import json, os, time
 
-SOURCE_URLS = [
-    "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/configs/vless.txt",
-    "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/configs/vless_reality.txt",
-    "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/sub/vless",
+# Файлы с VLESS конфигами — будут проверяться на работоспособность
+VLESS_SOURCE_URLS = [
+    "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/Vless-Reality-White-Lists-Rus-Mobile.txt",
+    "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/Vless-Reality-White-Lists-Rus-Mobile-2.txt",
 ]
 
-OUTPUT_FILE = "configs/working.txt"
-OUTPUT_JSON = "configs/stats.json"
+# Файлы белых списков — просто скачиваются и сохраняются без проверки
+WHITELIST_SOURCE_URLS = {
+    "WHITE-CIDR-RU-all.txt":     "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/WHITE-CIDR-RU-all.txt",
+    "WHITE-CIDR-RU-checked.txt": "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/WHITE-CIDR-RU-checked.txt",
+    "WHITE-SNI-RU-all.txt":      "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/WHITE-SNI-RU-all.txt",
+}
+
+OUTPUT_DIR = "configs"
 TIMEOUT = 5
 MAX_WORKERS = 50
 
@@ -95,10 +101,12 @@ def check_config(uri):
 
 def main():
     print("=== VLESS Config Checker ===\n")
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    print("[1/3] Collecting configs...")
+    # ── 1. Скачать и проверить VLESS конфиги ──────────────────────────────
+    print("[1/3] Collecting VLESS configs...")
     all_configs = set()
-    for url in SOURCE_URLS:
+    for url in VLESS_SOURCE_URLS:
         print(f"  Fetching {url} ...")
         raw = fetch_url(url)
         if not raw:
@@ -111,55 +119,67 @@ def main():
     configs = list(all_configs)
     print(f"  Total unique: {len(configs)}\n")
 
-    if not configs:
-        print("No configs found. Exiting.")
-        sys.exit(0)
+    working = []
+    if configs:
+        print(f"[2/3] Checking {len(configs)} configs...")
+        failed, errors = 0, 0
+        start = time.time()
 
-    print(f"[2/3] Checking {len(configs)} configs...")
-    working, failed, errors = [], 0, 0
-    start = time.time()
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            futures = {executor.submit(check_config, uri): uri for uri in configs}
+            done = 0
+            for future in as_completed(futures):
+                done += 1
+                uri, ok, reason = future.result()
+                if ok:
+                    working.append(uri)
+                elif reason == "parse_error":
+                    errors += 1
+                else:
+                    failed += 1
+                if done % 50 == 0 or done == len(configs):
+                    print(f"  {done}/{len(configs)} | Working: {len(working)}")
 
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = {executor.submit(check_config, uri): uri for uri in configs}
-        done = 0
-        for future in as_completed(futures):
-            done += 1
-            uri, ok, reason = future.result()
-            if ok:
-                working.append(uri)
-            elif reason == "parse_error":
-                errors += 1
-            else:
-                failed += 1
-            if done % 50 == 0 or done == len(configs):
-                print(f"  {done}/{len(configs)} | Working: {len(working)}")
+        elapsed = round(time.time() - start, 1)
 
-    elapsed = round(time.time() - start, 1)
-    print(f"\n[3/3] Saving results...")
+        with open(f"{OUTPUT_DIR}/working.txt", "w") as f:
+            f.write("\n".join(working) + "\n" if working else "")
 
-    os.makedirs("configs", exist_ok=True)
+        if working:
+            encoded = base64.b64encode("\n".join(working).encode()).decode()
+            with open(f"{OUTPUT_DIR}/working_sub.txt", "w") as f:
+                f.write(encoded)
 
-    with open(OUTPUT_FILE, "w") as f:
-        f.write("\n".join(working) + "\n" if working else "")
+        stats = {
+            "last_updated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "total_checked": len(configs),
+            "working": len(working),
+            "failed": failed,
+            "parse_errors": errors,
+            "elapsed_seconds": elapsed,
+        }
+        with open(f"{OUTPUT_DIR}/stats.json", "w") as f:
+            json.dump(stats, f, indent=2)
 
-    if working:
-        encoded = base64.b64encode("\n".join(working).encode()).decode()
-        with open("configs/working_sub.txt", "w") as f:
-            f.write(encoded)
+        print(f"  Saved {len(working)} working VLESS configs.\n")
+    else:
+        print("[2/3] No VLESS configs found, skipping check.\n")
+        elapsed = 0
 
-    stats = {
-        "last_updated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "total_checked": len(configs),
-        "working": len(working),
-        "failed": failed,
-        "parse_errors": errors,
-        "elapsed_seconds": elapsed,
-    }
-    with open(OUTPUT_JSON, "w") as f:
-        json.dump(stats, f, indent=2)
+    # ── 3. Скачать белые списки (без проверки) ────────────────────────────
+    print("[3/3] Downloading whitelists...")
+    for filename, url in WHITELIST_SOURCE_URLS.items():
+        print(f"  Fetching {filename} ...")
+        raw = fetch_url(url)
+        if raw:
+            with open(f"{OUTPUT_DIR}/{filename}", "w") as f:
+                f.write(raw)
+            lines = len([l for l in raw.splitlines() if l.strip()])
+            print(f"    Saved {lines} lines.")
+        else:
+            print(f"    [WARN] Failed to download {filename}")
 
-    print(f"  Saved {len(working)} working configs.")
-    print(f"  Stats: {stats}\nDone.")
+    print("\nDone.")
 
 
 if __name__ == "__main__":
