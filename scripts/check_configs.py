@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""
-Собирает VLESS конфиги из публичных источников,
-проверяет каждый и оставляет топ-150 самых быстрых.
-"""
 import base64, socket, ssl, sys, urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import json, os, time, random
@@ -31,12 +27,12 @@ SOURCES = [
 ]
 
 OUTPUT_DIR  = "configs"
-TIMEOUT     = 4      # секунд на проверку
-MAX_WORKERS = 100    # параллельных потоков
-TOP_N       = 150    # максимум конфигов в итоге
+TIMEOUT     = 4
+MAX_WORKERS = 100
+PER_SOURCE  = 100
 
 
-def fetch_url(url: str) -> str:
+def fetch_url(url):
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=15) as resp:
@@ -46,7 +42,7 @@ def fetch_url(url: str) -> str:
         return ""
 
 
-def decode_lines(text: str) -> list:
+def decode_lines(text):
     text = text.strip()
     if not text:
         return []
@@ -60,7 +56,7 @@ def decode_lines(text: str) -> list:
     return [l.strip() for l in text.splitlines() if l.strip()]
 
 
-def parse_vless(uri: str):
+def parse_vless(uri):
     try:
         rest = uri[len("vless://"):]
         at = rest.rfind("@")
@@ -82,8 +78,7 @@ def parse_vless(uri: str):
     return None
 
 
-def measure_tcp(host: str, port: int) -> float:
-    """Возвращает время подключения (сек) или None если недоступен."""
+def measure_tcp(host, port):
     try:
         t0 = time.monotonic()
         with socket.create_connection((host, port), timeout=TIMEOUT):
@@ -92,7 +87,7 @@ def measure_tcp(host: str, port: int) -> float:
         return None
 
 
-def measure_tls(host: str, port: int) -> float:
+def measure_tls(host, port):
     try:
         ctx = ssl.create_default_context()
         ctx.check_hostname = False
@@ -105,8 +100,7 @@ def measure_tls(host: str, port: int) -> float:
         return None
 
 
-def check_config(uri: str):
-    """Возвращает (uri, latency_ms) или (uri, None) если недоступен."""
+def check_config(uri):
     parsed = parse_vless(uri)
     if not parsed:
         return uri, None
@@ -117,65 +111,53 @@ def check_config(uri: str):
     return uri, (round(t * 1000) if t is not None else None)
 
 
-def is_reality(uri: str) -> bool:
+def is_reality(uri):
     return "security=reality" in uri or "reality" in uri.lower()
 
 
-def top_n(results: list, n: int) -> list:
-    """Отсортировать по задержке и вернуть топ-N."""
-    working = [(uri, lat) for uri, lat in results if lat is not None]
-    working.sort(key=lambda x: x[1])
-    return [uri for uri, _ in working[:n]]
-
-
-def save_txt(name: str, lines: list):
-    path = f"{OUTPUT_DIR}/{name}"
-    with open(path, "w") as f:
+def save_txt(name, lines):
+    with open(f"{OUTPUT_DIR}/{name}", "w") as f:
         f.write("\n".join(lines) + "\n" if lines else "")
     print(f"  {name}: {len(lines)} конфигов")
 
 
-def save_sub(name: str, lines: list):
+def save_sub(name, lines):
     if not lines:
         return
     enc = base64.b64encode("\n".join(lines).encode()).decode()
     with open(f"{OUTPUT_DIR}/{name}", "w") as f:
         f.write(enc)
-    print(f"  {name}: base64 подписка ({len(lines)} конфигов)")
+    print(f"  {name}: base64 ({len(lines)} конфигов)")
 
 
 def main():
-    print(f"=== VLESS Checker | top-{TOP_N} самых быстрых ===\n")
+    print(f"=== VLESS Checker | до {PER_SOURCE} из каждого источника ===\n")
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    # ── 1. Сбор ───────────────────────────────────────────────────────────
-    print(f"[1/3] Сбор конфигов из {len(SOURCES)} источников...")
-    all_vless: set = set()
+    print(f"[1/3] Сбор (макс. {PER_SOURCE} из каждого из {len(SOURCES)} источников)...")
+    all_vless = set()
     for url in SOURCES:
         raw = fetch_url(url)
         if not raw:
             continue
         lines = decode_lines(raw)
         vless = [l for l in lines if l.startswith("vless://")]
-        if vless:
-            print(f"  +{len(vless):4d}  {url.split('github.com/')[-1][:60]}")
+        if not vless:
+            continue
+        if len(vless) > PER_SOURCE:
+            vless = random.sample(vless, PER_SOURCE)
+        print(f"  +{len(vless):3d}  {url.split('github.com/')[-1][:60]}")
         all_vless.update(vless)
 
     configs = list(all_vless)
-    # Перемешиваем чтобы не было перекоса в сторону одного источника
-    random.shuffle(configs)
-
-    reality = [c for c in configs if is_reality(c)]
-    regular = [c for c in configs if not is_reality(c)]
-    print(f"\n  Всего уникальных: {len(configs)} (reality={len(reality)}, regular={len(regular)})\n")
+    print(f"\n  Всего к проверке: {len(configs)}\n")
 
     if not configs:
         print("Конфиги не найдены.")
         sys.exit(0)
 
-    # ── 2. Проверка с замером задержки ────────────────────────────────────
     print(f"[2/3] Проверка {len(configs)} конфигов...")
-    results_reality, results_regular = [], []
+    results = []
     done = 0
     start = time.time()
 
@@ -183,46 +165,48 @@ def main():
         futures = {executor.submit(check_config, uri): uri for uri in configs}
         for future in as_completed(futures):
             uri, lat = future.result()
+            results.append((uri, lat))
             done += 1
-            if is_reality(uri):
-                results_reality.append((uri, lat))
-            else:
-                results_regular.append((uri, lat))
-            if done % 500 == 0 or done == len(configs):
-                wr = sum(1 for _, l in results_reality if l)
-                wg = sum(1 for _, l in results_regular if l)
-                print(f"  {done}/{len(configs)} | Рабочих: {wr + wg}")
+            if done % 200 == 0 or done == len(configs):
+                working = sum(1 for _, l in results if l)
+                print(f"  {done}/{len(configs)} | Рабочих: {working}")
 
     elapsed = round(time.time() - start, 1)
 
-    # ── 3. Выбор топ-N и сохранение ───────────────────────────────────────
-    print(f"\n[3/3] Отбор топ-{TOP_N} самых быстрых и сохранение...")
+    working_reality = sorted(
+        [(u, l) for u, l in results if l is not None and is_reality(u)],
+        key=lambda x: x[1]
+    )
+    working_regular = sorted(
+        [(u, l) for u, l in results if l is not None and not is_reality(u)],
+        key=lambda x: x[1]
+    )
+    all_working = [u for u, _ in working_reality] + [u for u, _ in working_regular]
 
-    best_reality = top_n(results_reality, TOP_N)
-    best_regular = top_n(results_regular, TOP_N)
-    best_all     = top_n(results_reality + results_regular, TOP_N)
+    print(f"\n  Рабочих: {len(all_working)} из {len(configs)} за {elapsed}с\n")
 
-    save_txt("working.txt",              best_all)
-    save_sub("working_sub.txt",          best_all)
-    save_txt("working_reality.txt",      best_reality)
-    save_sub("working_reality_sub.txt",  best_reality)
-    save_txt("working_regular.txt",      best_regular)
-    save_sub("working_regular_sub.txt",  best_regular)
+    print("[3/3] Сохранение...")
+    save_txt("working.txt",             all_working)
+    save_sub("working_sub.txt",         all_working)
+    save_txt("working_reality.txt",     [u for u, _ in working_reality])
+    save_sub("working_reality_sub.txt", [u for u, _ in working_reality])
+    save_txt("working_regular.txt",     [u for u, _ in working_regular])
+    save_sub("working_regular_sub.txt", [u for u, _ in working_regular])
 
     stats = {
-        "last_updated":      time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "sources":           len(SOURCES),
-        "total_checked":     len(configs),
-        "working_total":     len([u for u, l in results_reality + results_regular if l]),
-        "saved_top":         len(best_all),
-        "saved_reality_top": len(best_reality),
-        "saved_regular_top": len(best_regular),
-        "elapsed_seconds":   elapsed,
+        "last_updated":     time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "sources":          len(SOURCES),
+        "per_source_limit": PER_SOURCE,
+        "total_checked":    len(configs),
+        "working_total":    len(all_working),
+        "working_reality":  len(working_reality),
+        "working_regular":  len(working_regular),
+        "elapsed_seconds":  elapsed,
     }
     with open(f"{OUTPUT_DIR}/stats.json", "w") as f:
         json.dump(stats, f, indent=2)
 
-    print(f"\nГотово за {elapsed}с.")
+    print("\nГотово.")
 
 
 if __name__ == "__main__":
