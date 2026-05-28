@@ -1,22 +1,8 @@
-# VLESS Reality Checker
+# VLESS Reality White List
 
-Автоматически собирает VLESS конфиги из 20+ популярных репозиториев и Telegram-агрегаторов, проверяет каждый на доступность и сохраняет только рабочие. Обновляется каждые 6 часов без участия пользователя.
-
-## Что это и зачем
-
-Берёт по 150 конфигов из каждого источника, проверяет TCP/TLS подключение к каждому серверу и оставляет только те, что реально отвечают. Reality конфиги хранятся отдельно — они работают стабильнее в России.
-
-## Файлы
-
-| Файл | Описание |
-|------|----------|
-| configs/working_sub.txt | Все рабочие конфиги — base64 подписка |
-| configs/working_reality_sub.txt | Только Reality — base64 подписка (рекомендуется) |
-| configs/working_regular_sub.txt | Только обычные VLESS — base64 подписка |
-| configs/working.txt | Все рабочие — plain text |
-| configs/working_reality.txt | Только Reality — plain text |
-| configs/working_regular.txt | Только обычные VLESS — plain text |
-| configs/stats.json | Статистика последнего обновления |
+Автоматически собирает VLESS конфиги из 20+ источников через GitHub и CDN-зеркала,
+проверяет каждый сервер на доступность и сохраняет только рабочие.
+Обновляется каждые 6 часов без участия пользователя.
 
 ## Ссылки для VPN-клиента
 
@@ -28,46 +14,52 @@ https://raw.githubusercontent.com/Rageru01/white-list/main/configs/working_reali
 
 ## Как добавить подписку в клиент
 
-### v2rayNG (Android)
+v2rayNG (Android):
 Нижнее меню → Подписки → + → вставить ссылку → Обновить
 
-### Hiddify (Android / iOS)
+Hiddify (Android / iOS):
 + → Добавить профиль → вставить ссылку
 
-### v2rayN (Windows)
+v2rayN (Windows):
 Подписки → Настройки подписок → Добавить → вставить ссылку → Обновить
 
-### Streisand (iOS)
+Streisand (iOS):
 Настройки → Импорт из URL → вставить ссылку
+
+## Файлы
+
+configs/working_sub.txt          — все рабочие (base64 подписка)
+configs/working_reality_sub.txt  — только Reality (base64 подписка)
+configs/working_regular_sub.txt  — только обычные VLESS (base64 подписка)
+configs/working_reality.txt      — Reality plain text
+configs/working.txt              — все рабочие plain text
+configs/stats.json               — статистика последней проверки
 
 ## Источники
 
+Конфиги берутся из популярных открытых репозиториев через GitHub и CDN-зеркала:
+
 - igareck/vpn-configs-for-russia — Reality белые списки для России
-- soroushmirzaei/telegram-configs-collector — агрегатор 100+ Telegram каналов
-- yebekhe/TelegramV2rayCollector — агрегатор Telegram каналов
-- itsyebekhe/HiN-VPN
+- soroushmirzaei/telegram-configs-collector — 100+ Telegram каналов
+- yebekhe/TelegramV2rayCollector — агрегатор Telegram
+- itsyebekhe/HiN-VPN, ConfigHub
 - barry-far/V2ray-Configs
 - Epodonios/v2ray-configs
-- peasoft/NoMoreVPN — Россия фокус
+- peasoft/NoMoreVPN
 - mahdibland/V2RayAggregator
-- и другие популярные агрегаторы
+- и другие
+
+Дублирующие источники получают данные через CDN (rawcdn.githack.com)
+для надёжности в случае если основной адрес недоступен.
 
 ## Как устроено
 
-Из каждого источника берётся случайная выборка до 150 VLESS конфигов. Затем к каждому серверу устанавливается TCP (или TLS) соединение — если сервер отвечает, конфиг считается рабочим. Reality конфиги сортируются по скорости ответа и идут первыми.
+1. Из каждого источника берётся случайная выборка до 150 VLESS конфигов
+2. К каждому серверу проверяется TCP/TLS соединение (таймаут 5 сек)
+3. Reality конфиги сортируются по скорости и идут первыми
+4. Результат сохраняется в configs/ и коммитится автоматически
 
 ## Обновление
 
 Автоматически каждые 6 часов через GitHub Actions.
 Ручной запуск: Actions → Update Working Configs → Run workflow.
-
-## Структура репозитория
-
-scripts/
-  check_configs.py         сбор, проверка и сохранение конфигов
-.github/workflows/
-  update-config.yml        автоматический запуск по расписанию
-configs/
-  working_sub.txt          результат (генерируется автоматически)
-  working_reality_sub.txt
-  stats.json
