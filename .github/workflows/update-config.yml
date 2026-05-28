@@ -22,7 +22,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Run collector
+      - name: Run config checker
         run: python scripts/check_configs.py
 
       - name: Commit updated configs
@@ -33,7 +33,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit."
           else
-            STATS=$(python -c "import json; d=json.load(open('configs/stats.json')); print(f\"cidr={d['cidr_total']}, sni={d['sni_total']}\")")
+            STATS=$(python -c "import json; d=json.load(open('configs/stats.json')); print(f\"working={d['working_total']}, checked={d['total_checked']}\")")
             git commit -m "chore: auto-update configs [$STATS] $(date -u +'%Y-%m-%d %H:%M UTC')"
             git push
           fi
