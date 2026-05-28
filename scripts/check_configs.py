@@ -3,61 +3,76 @@ import base64, socket, ssl, sys, urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import json, os, time, random
 
-# Источники с упором на VLESS Reality и белые списки для России
+# Используем зеркала githack/cdn вместо raw.githubusercontent (быстрее в РФ)
+RAW = "https://raw.githubusercontent.com"
+GH  = "https://rawcdn.githack.com"   # CDN-зеркало GitHub, работает в РФ
+
 SOURCES = [
-    # ── igareck — лучшие Reality для России (белые списки) ────────────────
-    ("igareck [Reality Mobile 150 лучших #1]",
-     "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/Vless-Reality-White-Lists-Rus-Mobile.txt"),
-    ("igareck [Reality Mobile 150 лучших #2]",
-     "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/Vless-Reality-White-Lists-Rus-Mobile-2.txt"),
+    # ── igareck — Reality белые списки для России ─────────────────────────
+    ("igareck [Reality RU Mobile #1]",
+     f"{RAW}/igareck/vpn-configs-for-russia/main/Vless-Reality-White-Lists-Rus-Mobile.txt"),
+    ("igareck [Reality RU Mobile #2]",
+     f"{RAW}/igareck/vpn-configs-for-russia/main/Vless-Reality-White-Lists-Rus-Mobile-2.txt"),
 
-    # ── Крупнейшие агрегаторы с Reality конфигами ─────────────────────────
-    ("soroushmirzaei [vless — 100+ TG каналов]",
-     "https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/protocols/vless"),
-    ("soroushmirzaei [splitted vless]",
-     "https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/subscribe/protocols/vless"),
-    ("yebekhe TelegramV2rayCollector [vless]",
-     "https://raw.githubusercontent.com/yebekhe/TelegramV2rayCollector/main/sub/normal/vless"),
-    ("yebekhe HiN-VPN [mix]",
-     "https://raw.githubusercontent.com/itsyebekhe/HiN-VPN/main/subscription/normal/mix"),
+    # ── soroushmirzaei — крупнейший агрегатор TG каналов ──────────────────
+    ("soroushmirzaei [vless]",
+     f"{RAW}/soroushmirzaei/telegram-configs-collector/main/protocols/vless"),
+    ("soroushmirzaei [vless sub]",
+     f"{RAW}/soroushmirzaei/telegram-configs-collector/main/subscribe/protocols/vless"),
+
+    # ── yebekhe агрегаторы ─────────────────────────────────────────────────
+    ("yebekhe [vless]",
+     f"{RAW}/yebekhe/TelegramV2rayCollector/main/sub/normal/vless"),
+    ("yebekhe [mix b64]",
+     f"{RAW}/yebekhe/TelegramV2rayCollector/main/sub/base64/mix"),
+    ("yebekhe HiN-VPN",
+     f"{RAW}/itsyebekhe/HiN-VPN/main/subscription/normal/mix"),
     ("yebekhe ConfigHub",
-     "https://raw.githubusercontent.com/yebekhe/ConfigHub/main/Eternity/normal/mix"),
-    ("yebekhe PSG",
-     "https://raw.githubusercontent.com/itsyebekhe/PSG/main/subscriptions/xray/normal/mix"),
+     f"{RAW}/yebekhe/ConfigHub/main/Eternity/normal/mix"),
 
-    # ── barry-far — известный агрегатор с Reality ─────────────────────────
-    ("barry-far [vless only]",
-     "https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/Splitted-By-Protocol/vless.txt"),
-    ("barry-far [all configs]",
-     "https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/All_Configs_Sub.txt"),
+    # ── barry-far ──────────────────────────────────────────────────────────
+    ("barry-far [vless]",
+     f"{RAW}/barry-far/V2ray-Configs/main/Splitted-By-Protocol/vless.txt"),
+    ("barry-far [all]",
+     f"{RAW}/barry-far/V2ray-Configs/main/All_Configs_Sub.txt"),
 
-    # ── Epodonios — содержит Reality конфиги ──────────────────────────────
-    ("Epodonios [vless only]",
-     "https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Splitted-By-Protocol/vless.txt"),
-    ("Epodonios [all]",
-     "https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/All_Configs_Sub.txt"),
+    # ── Epodonios ──────────────────────────────────────────────────────────
+    ("Epodonios [vless]",
+     f"{RAW}/Epodonios/v2ray-configs/main/Splitted-By-Protocol/vless.txt"),
 
     # ── Россия-фокус ───────────────────────────────────────────────────────
     ("peasoft NoMoreVPN [RU]",
-     "https://raw.githubusercontent.com/peasoft/NoMoreVPN/master/subscriptions/raw.txt"),
+     f"{RAW}/peasoft/NoMoreVPN/master/subscriptions/raw.txt"),
     ("mahdibland V2RayAggregator",
-     "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/Eternity.txt"),
-    ("Surfboardv2ray [sorted vless]",
-     "https://raw.githubusercontent.com/Surfboardv2ray/Proxy-sorter/main/subdata/sorted/vless"),
+     f"{RAW}/mahdibland/V2RayAggregator/master/Eternity.txt"),
     ("SoliSpirit [vless]",
-     "https://raw.githubusercontent.com/SoliSpirit/v2ray-configs/main/Protocols/vless.txt"),
+     f"{RAW}/SoliSpirit/v2ray-configs/main/Protocols/vless.txt"),
     ("MhdiTaheri V2rayCollector",
-     "https://raw.githubusercontent.com/MhdiTaheri/V2rayCollector/main/vless"),
+     f"{RAW}/MhdiTaheri/V2rayCollector/main/vless"),
     ("Leon406 SubCrawler [vless]",
-     "https://raw.githubusercontent.com/Leon406/SubCrawler/main/sub/share/vless"),
+     f"{RAW}/Leon406/SubCrawler/main/sub/share/vless"),
     ("ALIILAPRO v2ray",
-     "https://raw.githubusercontent.com/ALIILAPRO/v2ray/main/sub.txt"),
+     f"{RAW}/ALIILAPRO/v2ray/main/sub.txt"),
     ("vveg26 chromego_merge",
-     "https://raw.githubusercontent.com/vveg26/chromego_merge/main/sub/merged_proxies_new.txt"),
+     f"{RAW}/vveg26/chromego_merge/main/sub/merged_proxies_new.txt"),
+    ("Surfboardv2ray [sorted vless]",
+     f"{RAW}/Surfboardv2ray/Proxy-sorter/main/subdata/sorted/vless"),
+    ("ermaozi get_subscribe",
+     f"{RAW}/ermaozi/get_subscribe/main/subscribe/v2ray.txt"),
+
+    # ── Те же источники через CDN-зеркало (githack) ────────────────────────
+    ("CDN: barry-far [vless]",
+     f"{GH}/barry-far/V2ray-Configs/main/Splitted-By-Protocol/vless.txt"),
+    ("CDN: Epodonios [vless]",
+     f"{GH}/Epodonios/v2ray-configs/main/Splitted-By-Protocol/vless.txt"),
+    ("CDN: soroushmirzaei [vless]",
+     f"{GH}/soroushmirzaei/telegram-configs-collector/main/protocols/vless"),
+    ("CDN: yebekhe [vless]",
+     f"{GH}/yebekhe/TelegramV2rayCollector/main/sub/normal/vless"),
 ]
 
 OUTPUT_DIR  = "configs"
-TIMEOUT     = 4
+TIMEOUT     = 5
 MAX_WORKERS = 100
 PER_SOURCE  = 150
 
@@ -65,10 +80,10 @@ PER_SOURCE  = 150
 def fetch_url(url):
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=15) as resp:
+        with urllib.request.urlopen(req, timeout=20) as resp:
             return resp.read().decode("utf-8", errors="ignore")
     except Exception as e:
-        print(f"  [WARN] {url.split('/')[-1]}: {e}")
+        print(f"  [WARN] {url.split('/')[-1][:50]}: {e}")
         return ""
 
 
@@ -161,7 +176,7 @@ def save_sub(name, lines):
 
 
 def main():
-    print(f"=== VLESS Reality Checker | {len(SOURCES)} источников, до {PER_SOURCE} с каждого ===\n")
+    print(f"=== VLESS Checker | {len(SOURCES)} источников, до {PER_SOURCE} с каждого ===\n")
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     print(f"[1/3] Сбор конфигов...")
@@ -173,7 +188,7 @@ def main():
         lines = decode_lines(raw)
         vless = [l for l in lines if l.startswith("vless://")]
         if not vless:
-            print(f"  +  0  {name} [нет vless]")
+            print(f"  +  0  {name}")
             continue
         if len(vless) > PER_SOURCE:
             vless = random.sample(vless, PER_SOURCE)
