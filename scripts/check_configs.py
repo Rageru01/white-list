@@ -1,1 +1,151 @@
+#!/usr/bin/env python3
+import urllib.request
+import os
+import time
+import json
+import base64
+import re
+
+# ── Проверенные и стабильные открытые источники VLESS ───────────────────────
+VLESS_SOURCES = [
+    ("yebekhe TVC", 
+     "https://raw.githubusercontent.com/yebekhe/TVC/main/subscriptions/protocols/vless"),
+    ("barry-far V2ray-Configs", 
+     "https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/All_Configs_Sub.txt"),
+    ("Borders-Freedom death-note", 
+     "https://raw.githubusercontent.com/Borders-Freedom/death-note/main/subscription/vless"),
+]
+
+OUTPUT_DIR = "configs"
+
+
+def fetch(url: str) -> str:
+    """Скачивает содержимое по ссылке с подменой User-Agent"""
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return r.read().decode("utf-8", errors="ignore").strip()
+    except Exception as e:
+        print(f"  [WARN] Не удалось скачать {url.split('/')[-1][:30]}: {e}")
+        return ""
+
+
+def decode_base64(data: str) -> str:
+    """Безопасно декодирует Base64 с исправлением паддинга"""
+    # Удаляем пробелы и переносы строк, которые ломают Base64
+    clean_data = "".join(data.split())
+    missing_padding = len(clean_data) % 4
+    if missing_padding:
+        clean_data += '=' * (4 - missing_padding)
+    try:
+        return base64.b64decode(clean_data).decode('utf-8', errors='ignore')
+    except Exception:
+        return data
+
+
+def is_vless(line: str) -> bool:
+    """
+    Улучшенная и более гибкая проверка VLESS конфигурации.
+    Проверяет только 핵심 (базовую структуру): vless:// и наличие порта.
+    Это гарантирует, что IPv4, IPv6 и любые кастомные параметры (Reality, TLS, WS) пройдут проверку.
+    """
+    line = line.strip()
+    if not line.startswith("vless://"):
+        return False
+    
+    # Регулярка проверяет: vless://[any_chars]@[any_chars]:[digits]
+    # Поддерживает IPv6 в скобках [::1]:443 и обычные домены/IP
+    return bool(re.match(r"^vless://[^@]+@[^:]+:\d+.*$", line))
+
+
+def collect_vless(sources: list) -> set:
+    """Собирает, декодирует и фильтрует конфигурации"""
+    result = set()
+    
+    for name, url in sources:
+        raw = fetch(url)
+        if not raw:
+            print(f"  [-] {name}: Источник пуст или недоступен")
+            continue
+        
+        # Умное определение формата (Plain Text или Base64)
+        # Если в первых 50 символах нет "vless://", скорее всего это Base64-шифр
+        if "vless://" Packs not in raw[:50]:
+            print(f"  [*] {name}: Обнаружен формат Base64, декодируем...")
+            raw = decode_base64(raw)
+            
+        lines = raw.splitlines()
+        source_configs = []
+        
+        for line in lines:
+            line = line.strip()
+            if is_vless(line):
+                source_configs.append(line)
+                
+        if not source_configs:
+            print(f"  [!] {name}: Не найдено ни одной валидной VLESS строки после проверки")
+            continue
+            
+        print(f"  [+] {name}: Успешно импортировано {len(source_configs)} конфигураций")
+        result.update(source_configs)
+        
+    return result
+
+
+def save_subscriptions(configs: set):
+    """Сохраняет конфигурации и гарантирует запись файлов"""
+    lines = sorted(list(configs))
+    plain_text = "\n".join(lines) + "\n"
+    
+    # Кодируем в Base64 без лишних переносов строк
+    b64_bytes = base64.b64encode(plain_text.encode('utf-8'))
+    b64_text = b64_bytes.decode('utf-8')
+    
+    # Принудительно создаем папку, если её нет
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    
+    # Запись файлов
+    with open(f"{OUTPUT_DIR}/vless_plain.txt", "w", encoding="utf-8") as f:
+        f.write(plain_text)
+        
+    with open(f"{OUTPUT_DIR}/vless_base64.txt", "w", encoding="utf-8") as f:
+        f.write(b64_text)
+        
+    print(f"\n  [Файлы созданы]:")
+    print(f"  -> {OUTPUT_DIR}/vless_plain.txt ({len(lines)} строк)")
+    print(f"  -> {OUTPUT_DIR}/vless_base64.txt (Закодирован)")
+    return len(lines)
+
+
+def main():
+    print(f"=== СБОРЩИК VLESS ПОДПИСОК (IPv4 + IPv6) ===\n")
+    start = time.time()
+
+    print(f"[1/2] Сканирование открытых источников...")
+    vless_configs = collect_vless(VLESS_SOURCES)
+    print(f"\nИтого уникальных конфигураций собрано: {len(vless_configs)}")
+
+    if not vless_configs:
+        print("[ERROR] Список конфигураций пуст! Запись файлов отменена, чтобы не затереть старую базу.")
+        # Создаем пустую заглушку для stats.json, чтобы workflow не упал, но зафиксировал 0
+        total_saved = 0
+    else:
+        print("[2/2] Сохранение результатов в папку...")
+        total_saved = save_subscriptions(vless_configs)
+
+    stats = {
+        "last_updated":    time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "vless_sources":   len(VLESS_SOURCES),
+        "total_configs":   total_saved,
+        "elapsed_seconds": round(time.time() - start, 1),
+    }
+    
+    with open(f"{OUTPUT_DIR}/stats.json", "w", encoding="utf-8") as f:
+        json.dump(stats, f, indent=2)
+
+    print(f"\nРабота скрипта завершена за {stats['elapsed_seconds']} сек.")
+
+
+if __name__ == "__main__":
+    main()
 
