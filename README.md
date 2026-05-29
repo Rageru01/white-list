@@ -1,107 +1,84 @@
 # VLESS Subscription Aggregator
 
-Автоматический сборщик VLESS-конфигураций с упором на обход блокировок в России.  
-Собирает из 50+ источников, убирает дубликаты, приоритизирует REALITY и российские серверы.  
-Обновляется каждые 6 часов.
+Автоматический сборщик VLESS-конфигураций из 60+ источников: GitHub-агрегаторов и публичных Telegram-каналов.
+
+Приоритет при отборе: **REALITY → Россия → IPv6 → остальные**. Обновляется каждые 6 часов через GitHub Actions.
 
 ---
 
-## 🔗 Подписки для VPN-клиентов
-
-Вставьте нужную ссылку в Hiddify, v2rayNG, Nekobox, Streisand и др.
+## 🔗 Подписки
 
 ### Все конфиги (рекомендуется)
-| Формат | Ссылка |
-|--------|--------|
-| Base64 | `https://raw.githubusercontent.com/Rageru01/white-list/main/configs/vless_base64.txt` |
-| Plain  | `https://raw.githubusercontent.com/Rageru01/white-list/main/configs/vless_plain.txt` |
+
+https://raw.githubusercontent.com/Rageru01/white-list/main/configs/vless_base64.txt
+
+### Только REALITY — лучший обход DPI / РКН
+
+https://raw.githubusercontent.com/Rageru01/white-list/main/configs/vless_reality_base64.txt
 
 ### Только российские серверы
-| Формат | Ссылка |
-|--------|--------|
-| Base64 | `https://raw.githubusercontent.com/Rageru01/white-list/main/configs/vless_russia_base64.txt` |
-| Plain  | `https://raw.githubusercontent.com/Rageru01/white-list/main/configs/vless_russia_plain.txt` |
 
-### Только REALITY (лучший обход DPI)
-| Формат | Ссылка |
-|--------|--------|
-| Base64 | `https://raw.githubusercontent.com/Rageru01/white-list/main/configs/vless_reality_base64.txt` |
-| Plain  | `https://raw.githubusercontent.com/Rageru01/white-list/main/configs/vless_reality_plain.txt` |
+https://raw.githubusercontent.com/Rageru01/white-list/main/configs/vless_russia_base64.txt
 
 ### Только IPv6
-| Формат | Ссылка |
-|--------|--------|
-| Base64 | `https://raw.githubusercontent.com/Rageru01/white-list/main/configs/vless_ipv6_base64.txt` |
-| Plain  | `https://raw.githubusercontent.com/Rageru01/white-list/main/configs/vless_ipv6_plain.txt` |
+
+https://raw.githubusercontent.com/Rageru01/white-list/main/configs/vless_ipv6_base64.txt
+
+> Plain-text версии доступны с суффиксом `_plain.txt` вместо `_base64.txt`.
 
 ---
 
 ## 📱 Как добавить подписку
 
-### Hiddify
-1. Скопируйте ссылку на `vless_base64.txt` (любую из таблицы выше)
-2. Откройте Hiddify → нажмите **+**
-3. Выберите **Добавить подписку по URL**
-4. Вставьте ссылку → **Сохранить**
-5. Нажмите кнопку обновления
+**Hiddify:** Откройте Hiddify → **+** → **Добавить подписку по URL** → вставьте ссылку → **Сохранить** → обновить.
 
-### v2rayNG
-1. Главный экран → **☰** → **Subscription group**
-2. Нажмите **+**, вставьте ссылку на `vless_base64.txt`
-3. **OK** → главный экран → **☰** → **Update subscription**
+**v2rayNG:** **☰** → **Subscription group** → **+** → вставьте ссылку → **OK** → **☰** → **Update subscription**.
 
-### Nekobox / NekoRay
-1. **Profiles** → **New group** → тип **Subscription**
-2. Вставьте ссылку → **OK**
-3. Правой кнопкой по группе → **Update**
+**Nekobox / NekoRay:** **Profiles** → **New group** → тип **Subscription** → вставьте ссылку → **OK** → правой кнопкой по группе → **Update**.
 
 ---
 
 ## 📦 Источники
 
-### 🇷🇺 Россия и СНГ
-| Источник | Репозиторий |
-|----------|-------------|
-| soroushmirzaei (RU) | github.com/soroushmirzaei/telegram-configs-collector |
-| Surfboardv2ray (RU) | github.com/Surfboardv2ray/Proxy-sorter |
-| coldwater (RU) | github.com/coldwater-10/V2Hub |
-| yebekhe (RU) | github.com/yebekhe/TVC |
-| v2rayse (RU) | github.com/v2rayse/node-list |
-| Proxifly (RU) | github.com/Proxifly/free-proxy-list |
+### Telegram-каналы
 
-### ✨ REALITY / TLS
-| Источник | Репозиторий |
-|----------|-------------|
-| lagzian | github.com/lagzian/SS-Collector |
-| coldwater | github.com/coldwater-10/V2rayCollector |
-| SoliSpirit | github.com/SoliSpirit/v2ray-configs |
-| Surfboardv2ray | github.com/Surfboardv2ray/Proxy-sorter |
+| Канал | Особенность |
+|-------|-------------|
+| @v2ray_configs_pool | Самый большой пул, обновляется несколько раз в день |
+| @VlessConfig | VLESS-only, высокое качество |
+| @DirectVPN | Прямые конфиги |
+| @proxy_mtn | Активный пул |
+| @freev2rayssr / @FreeV2rays | Бесплатные конфиги |
+| @ConfigsHUB | Агрегатор каналов |
+| @PrivateVPNs | Приватные конфиги |
+| @vless_vmess_v2rayng | Смешанный пул |
+| @iP_CF | Cloudflare IP конфиги |
+| @proxystore11 | Регулярные обновления |
 
-### 🌐 Крупные агрегаторы
-| Источник | Репозиторий |
-|----------|-------------|
-| barry-far | github.com/barry-far/V2ray-Configs |
-| soroushmirzaei | github.com/soroushmirzaei/telegram-configs-collector |
-| mahdibland | github.com/mahdibland/V2RayAggregator |
-| MrMohebi | github.com/MrMohebi/xray-proxy-grabber-telegram |
-| Epodonios | github.com/Epodonios/v2ray-configs |
-| yebekhe | github.com/yebekhe/TVC |
+### GitHub-агрегаторы
+
+| Репозиторий | Особенность |
+|-------------|-------------|
+| soroushmirzaei/telegram-configs-collector | Парсит 100+ TG-каналов, разбивка по странам |
+| MrMohebi/xray-proxy-grabber-telegram | Прямой парсинг Telegram |
+| Surfboardv2ray/TGParse + Proxy-sorter | TG-парсер + сортировка по странам |
+| yebekhe/TVC | Активен годами |
+| Epodonios/v2ray-configs | Ежедневные обновления |
+| barry-far/V2ray-Configs | Один из старейших агрегаторов |
+| mahdibland/V2RayAggregator | Крупный merger |
+| lagzian/SS-Collector | REALITY и IPv6 |
+| coldwater-10/V2rayCollector | REALITY + Россия |
 
 ---
 
 ## 🔄 Автоматизация
 
-Работает через **GitHub Actions**:
-- **По расписанию:** каждые 6 часов
-- **Вручную:** Actions → *Update Working Configs* → **Run workflow**
+Работает через GitHub Actions. По расписанию — каждые 6 часов. Вручную — Actions → *Update Working Configs* → **Run workflow**.
 
-При каждом запуске:
-1. Загружает конфиги из всех источников
-2. Декодирует base64 там, где нужно
-3. Убирает дубликаты
-4. Приоритизирует: Россия → REALITY → IPv6 → остальные
-5. Сохраняет до 1000 конфигов и обновляет статистику
+При каждом запуске скрипт загружает данные из 60+ источников, дедуплицирует по `uuid@host:port`, применяет квоты (REALITY 30% · Россия 25% · IPv6 15% · прочие 30%) и сохраняет до 1000 конфигов в 4 файла.
 
 ---
 
 ## 📊 Статистика последнего обновления
+
+https://raw.githubusercontent.com/Rageru01/white-list/main/configs/stats.json
