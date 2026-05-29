@@ -22,7 +22,6 @@ https://raw.githubusercontent.com/Rageru01/white-list/main/configs/vless_russia_
 
 https://raw.githubusercontent.com/Rageru01/white-list/main/configs/vless_ipv6_base64.txt
 
-> Plain-text версии: замените `_base64.txt` на `_plain.txt`
 
 ---
 
