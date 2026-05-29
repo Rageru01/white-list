@@ -8,93 +8,55 @@ import re
 import requests
 
 GITHUB_SOURCES = [
-    # ── Основные агрегаторы ──
+    # ── Крупные агрегаторы (собирают из множества источников) ──
     {
-        "name": "barry-far",
+        "name": "barry-far-all",
         "urls": ["https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/All_Configs_Sub.txt"]
     },
     {
-        "name": "soroushmirzaei",
+        "name": "barry-far-sub6",
+        "urls": ["https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/Sub6.txt"]
+    },
+    {
+        "name": "barry-far-sub7",
+        "urls": ["https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/Sub7.txt"]
+    },
+    {
+        "name": "soroushmirzaei-vless",
         "urls": ["https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/protocols/vless"]
     },
-    {
-        "name": "mahdibland",
-        "urls": ["https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/sub_merge_vless.txt"]
-    },
-    {
-        "name": "yebekhe",
-        "urls": ["https://raw.githubusercontent.com/yebekhe/TVC/main/subscriptions/protocols/vless"]
-    },
-    {
-        "name": "Epodonios",
-        "urls": ["https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Configs/vless.txt"]
-    },
-    {
-        "name": "peasoft",
-        "urls": ["https://raw.githubusercontent.com/peasoft/NoMoreWalls/master/list.txt"]
-    },
-    {
-        "name": "awesome-vpn",
-        "urls": ["https://raw.githubusercontent.com/awesome-vpn/awesome-vpn/master/all"]
-    },
-    {
-        "name": "ALIILAPRO",
-        "urls": ["https://raw.githubusercontent.com/ALIILAPRO/v2rayNG-Config/main/sub.txt"]
-    },
-    {
-        "name": "vpei",
-        "urls": ["https://raw.githubusercontent.com/vpei/Free-Node-Merge/main/o/node.txt"]
-    },
-    {
-        "name": "tbbatbb",
-        "urls": ["https://raw.githubusercontent.com/tbbatbb/Proxy/master/dist/v2ray.config.txt"]
-    },
-    # ── REALITY конфиги ──
-    {
-        "name": "lagzian-vless",
-        "urls": ["https://raw.githubusercontent.com/lagzian/SS-Collector/main/VLESS/vless.txt"]
-    },
-    {
-        "name": "lagzian-reality",
-        "urls": ["https://raw.githubusercontent.com/lagzian/SS-Collector/main/VLESS/reality.txt"]
-    },
-    {
-        "name": "mfuu",
-        "urls": ["https://raw.githubusercontent.com/mfuu/v2ray/master/vless.txt"]
-    },
-    # ── IPv6 источники ──
     {
         "name": "soroushmirzaei-ipv6",
         "urls": ["https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/ipv6"]
     },
     {
-        "name": "barry-far-ipv6",
-        "urls": ["https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/Sub6.txt"]
+        "name": "soroushmirzaei-russia",
+        "urls": ["https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/countries/ru/mixed"]
+    },
+    {
+        "name": "soroushmirzaei-russia-vless",
+        "urls": ["https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/countries/ru/vless"]
+    },
+    {
+        "name": "mahdibland-vless",
+        "urls": ["https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/sub_merge_vless.txt"]
+    },
+    {
+        "name": "mahdibland-all",
+        "urls": ["https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/sub_merge.txt"]
+    },
+    # ── REALITY конфиги ──
+    {
+        "name": "lagzian-reality",
+        "urls": ["https://raw.githubusercontent.com/lagzian/SS-Collector/main/VLESS/reality.txt"]
+    },
+    {
+        "name": "lagzian-vless",
+        "urls": ["https://raw.githubusercontent.com/lagzian/SS-Collector/main/VLESS/vless.txt"]
     },
     {
         "name": "lagzian-ipv6",
         "urls": ["https://raw.githubusercontent.com/lagzian/SS-Collector/main/VLESS/ipv6.txt"]
-    },
-    # ── Россия ──
-    {
-        "name": "russia-configs-1",
-        "urls": ["https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/countries/ru/mixed"]
-    },
-    {
-        "name": "russia-configs-2",
-        "urls": ["https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/Sub7.txt"]
-    },
-    {
-        "name": "MrMohebi-xray",
-        "urls": ["https://raw.githubusercontent.com/MrMohebi/xray-proxy-grabber-telegram/master/collected-proxies/row-url/vless.txt"]
-    },
-    {
-        "name": "rxn957",
-        "urls": ["https://raw.githubusercontent.com/rxn957/rxn957/main/vless.txt"]
-    },
-    {
-        "name": "HW7X-vless",
-        "urls": ["https://raw.githubusercontent.com/HW7X/vless-config/main/vless.txt"]
     },
     {
         "name": "coldwater-reality",
@@ -105,16 +67,108 @@ GITHUB_SOURCES = [
         "urls": ["https://raw.githubusercontent.com/coldwater-10/V2rayCollector/main/vless.txt"]
     },
     {
-        "name": "arshiacomplus",
-        "urls": ["https://raw.githubusercontent.com/arshiacomplus/v2rayExtractor/main/vless.txt"]
+        "name": "ALIILAPRO",
+        "urls": ["https://raw.githubusercontent.com/ALIILAPRO/v2rayNG-Config/main/sub.txt"]
+    },
+    {
+        "name": "MrMohebi-vless",
+        "urls": ["https://raw.githubusercontent.com/MrMohebi/xray-proxy-grabber-telegram/master/collected-proxies/row-url/vless.txt"]
+    },
+    {
+        "name": "Epodonios-vless",
+        "urls": ["https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Configs/vless.txt"]
+    },
+    {
+        "name": "yebekhe-vless",
+        "urls": ["https://raw.githubusercontent.com/yebekhe/TVC/main/subscriptions/protocols/vless"]
+    },
+    {
+        "name": "mfuu-vless",
+        "urls": ["https://raw.githubusercontent.com/mfuu/v2ray/master/vless.txt"]
+    },
+    {
+        "name": "peasoft",
+        "urls": ["https://raw.githubusercontent.com/peasoft/NoMoreWalls/master/list.txt"]
     },
     {
         "name": "freefq",
         "urls": ["https://raw.githubusercontent.com/freefq/free/master/v2"]
     },
     {
+        "name": "vpei",
+        "urls": ["https://raw.githubusercontent.com/vpei/Free-Node-Merge/main/o/node.txt"]
+    },
+    {
+        "name": "tbbatbb",
+        "urls": ["https://raw.githubusercontent.com/tbbatbb/Proxy/master/dist/v2ray.config.txt"]
+    },
+    {
+        "name": "arshiacomplus",
+        "urls": ["https://raw.githubusercontent.com/arshiacomplus/v2rayExtractor/main/vless.txt"]
+    },
+    {
+        "name": "awesome-vpn",
+        "urls": ["https://raw.githubusercontent.com/awesome-vpn/awesome-vpn/master/all"]
+    },
+    {
         "name": "w1770938096",
         "urls": ["https://raw.githubusercontent.com/w1770938096/proxy/main/vless.txt"]
+    },
+    {
+        "name": "HW7X-vless",
+        "urls": ["https://raw.githubusercontent.com/HW7X/vless-config/main/vless.txt"]
+    },
+    {
+        "name": "rxn957",
+        "urls": ["https://raw.githubusercontent.com/rxn957/rxn957/main/vless.txt"]
+    },
+    {
+        "name": "aiboboxx-vless",
+        "urls": ["https://raw.githubusercontent.com/aiboboxx/v2rayfree/main/v2"]
+    },
+    {
+        "name": "ermaozi-vless",
+        "urls": ["https://raw.githubusercontent.com/ermaozi/get_subscribe/main/subscribe/vless.txt"]
+    },
+    {
+        "name": "mheidari98-vless",
+        "urls": ["https://raw.githubusercontent.com/mheidari98/.proxy/main/vless"]
+    },
+    {
+        "name": "saeeddev94-vless",
+        "urls": ["https://raw.githubusercontent.com/saeeddev94/xray-boot/master/vless.txt"]
+    },
+    {
+        "name": "roosterkid-vless",
+        "urls": ["https://raw.githubusercontent.com/roosterkid/openproxylist/main/VLESS_RAW.txt"]
+    },
+    {
+        "name": "Pawdroid-vless",
+        "urls": ["https://raw.githubusercontent.com/Pawdroid/Free-servers/main/sub"]
+    },
+    {
+        "name": "zhangkaiitugithub",
+        "urls": ["https://raw.githubusercontent.com/zhangkaiitugithub/passcro/main/speednodes.yaml"]
+    },
+    {
+        "name": "Leon406-vless",
+        "urls": ["https://raw.githubusercontent.com/Leon406/SubCrawler/main/sub/share/vless"]
+    },
+    {
+        "name": "resasanian-vless",
+        "urls": ["https://raw.githubusercontent.com/resasanian/Mirza/main/vless.txt"]
+    },
+    {
+        "name": "IranianCypherpunks",
+        "urls": ["https://raw.githubusercontent.com/IranianCypherpunks/sub/main/vlessconfig"]
+    },
+    {
+        "name": "SoliSpirit-vless",
+        "urls": ["https://raw.githubusercontent.com/SoliSpirit/v2ray-configs/main/vless.txt"]
+    },
+    {
+        "name": "MatinKh98-vless",
+        "urls": ["https://raw.githubusercontent.com/MatinKh98/v2ray-subscribe/main/subscribe/vless.txt"]
     },
 ]
 
@@ -149,7 +203,7 @@ def decode_base64(data: str) -> str:
 
 
 def is_ipv6(cfg: str) -> bool:
-    return bool(re.search(r'\[([0-9a-fA-F:]+)\]', cfg))
+    return bool(re.search(r'@\[([0-9a-fA-F:]+)\]', cfg))
 
 
 def extract_vless(text: str) -> list:
@@ -196,7 +250,7 @@ def main():
         if extracted:
             ipv6_found = [c for c in extracted if is_ipv6(c)]
             ipv4_found = [c for c in extracted if not is_ipv6(c)]
-            print(f"  Найдено: {len(extracted)} конфигов (IPv4: {len(ipv4_found)}, IPv6: {len(ipv6_found)})")
+            print(f"  Найдено: {len(extracted)} (IPv4: {len(ipv4_found)}, IPv6: {len(ipv6_found)})")
             unique.update(extracted)
             ipv6_configs.update(ipv6_found)
         else:
@@ -209,17 +263,14 @@ def main():
     print(f"Из них IPv6: {len(ipv6_list)}")
 
     if len(configs) > MAX_CONFIGS:
-        # Гарантируем минимум 20% IPv6
         ipv6_quota = min(len(ipv6_list), MAX_CONFIGS // 5)
         ipv4_quota = MAX_CONFIGS - ipv6_quota
-
         ipv4_configs = [c for c in configs if not is_ipv6(c)]
         random.shuffle(ipv4_configs)
         random.shuffle(ipv6_list)
-
         configs = ipv4_configs[:ipv4_quota] + ipv6_list[:ipv6_quota]
         random.shuffle(configs)
-        print(f"Обрезано до {MAX_CONFIGS} (IPv4: {len(ipv4_configs[:ipv4_quota])}, IPv6: {ipv6_quota})")
+        print(f"Обрезано до {MAX_CONFIGS} (IPv4: {ipv4_quota}, IPv6: {ipv6_quota})")
 
     if not configs:
         configs = ["vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=tls#No_Configs_Found"]
@@ -234,7 +285,6 @@ def main():
     with open(f"{OUTPUT_DIR}/vless_base64.txt", "w") as f:
         f.write(b64)
 
-    # Отдельный файл только IPv6
     if ipv6_list:
         ipv6_plain = "\n".join(sorted(ipv6_list)) + "\n"
         ipv6_b64 = base64.b64encode(ipv6_plain.encode()).decode()
@@ -242,12 +292,15 @@ def main():
             f.write(ipv6_plain)
         with open(f"{OUTPUT_DIR}/vless_ipv6_base64.txt", "w") as f:
             f.write(ipv6_b64)
+    else:
+        open(f"{OUTPUT_DIR}/vless_ipv6_plain.txt", "w").close()
+        open(f"{OUTPUT_DIR}/vless_ipv6_base64.txt", "w").close()
 
     stats = {
         "last_updated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "total_configs": len(configs),
         "ipv6_configs": len(ipv6_list),
-        "ipv4_configs": len(configs) - len([c for c in configs if is_ipv6(c)]),
+        "ipv4_configs": len([c for c in configs if not is_ipv6(c)]),
         "elapsed_seconds": round(time.time() - start, 2)
     }
     with open(f"{OUTPUT_DIR}/stats.json", "w") as f:
