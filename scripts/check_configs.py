@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-import urllib.request
 import os
 import time
 import json
 import base64
+import requests  # Перешли на мощный requests вместо urllib
 
-# ── 100% Рабочие, быстрые и легковесные источники VLESS ───────────────────
+# ── 100% Рабочие, проверенные источники VLESS ─────────────────────────────
 VLESS_SOURCES = [
     ("HopV2ray", 
      "https://raw.githubusercontent.com/hopv2ray/HopV2ray/main/vless.txt"),
@@ -21,17 +21,22 @@ OUTPUT_DIR = "configs"
 
 
 def fetch(url: str) -> str:
-    """Скачивает содержимое по ссылке с увеличенным таймаутом"""
+    """Скачивает содержимое по ссылке с помощью библиотеки requests"""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/plain,text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5"
+    }
     try:
-        req = urllib.request.Request(
-            url, 
-            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-        )
-        # Увеличиваем таймаут до 40 секунд на случай долгого ответа GitHub
-        with urllib.request.urlopen(req, timeout=40) as r:
-            return r.read().decode("utf-8", errors="ignore").strip()
+        # Использование session/requests снижает риск получить 403 Forbidden
+        response = requests.get(url, headers=headers, timeout=25)
+        if response.status_code == 200:
+            return response.text.strip()
+        else:
+            print(f"  [WARN] {url.split('/')[-1][:20]} вернул статус-код: {response.status_code}")
+            return ""
     except Exception as e:
-        print(f"  [WARN] Не удалось скачать {url.split('/')[-1][:30]}: {e}")
+        print(f"  [WARN] Ошибка сети для {url.split('/')[-1][:20]}: {e}")
         return ""
 
 
@@ -60,10 +65,10 @@ def collect_vless(sources: list) -> set:
     for name, url in sources:
         raw = fetch(url)
         if not raw:
-            print(f"  [-] {name}: Источник пуст или недоступен")
+            print(f"  [-] {name}: Не удалось получить данные")
             continue
             
-        print(f"  [*] {name}: Успешно скачано {len(raw)} символов текста.")
+        print(f"  [*] {name}: Скачано {len(raw)} символов текста.")
         
         # Умное определение формата (Plain Text или Base64)
         if "vless://" not in raw[:150]:
@@ -79,7 +84,7 @@ def collect_vless(sources: list) -> set:
                 source_configs.append(line)
                 
         if not source_configs:
-            print(f"  [!] {name}: Не найдено ни одной VLESS строки после проверки")
+            print(f"  [!] {name}: Не найдено ни одной VLESS строки")
             continue
             
         print(f"  [+] {name}: Успешно распознано {len(source_configs)} конфигураций")
@@ -104,9 +109,9 @@ def save_subscriptions(configs: set):
     with open(f"{OUTPUT_DIR}/vless_base64.txt", "w", encoding="utf-8") as f:
         f.write(b64_text)
         
-    print(f"\n  [Файлы успешно записаны на диск]:")
+    print(f"\n  [Файлы успешно записаны]:")
     print(f"  -> {OUTPUT_DIR}/vless_plain.txt ({len(lines)} строк)")
-    print(f"  -> {OUTPUT_DIR}/vless_base64.txt (Закодирован в Base64)")
+    print(f"  -> {OUTPUT_DIR}/vless_base64.txt (Закодирован)")
     return len(lines)
 
 
@@ -140,4 +145,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
+            
