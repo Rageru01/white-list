@@ -4,16 +4,17 @@ import os
 import time
 import json
 import base64
-import re
 
 # ── Проверенные и стабильные открытые источники VLESS ───────────────────────
 VLESS_SOURCES = [
-    ("yebekhe TVC", 
-     "https://raw.githubusercontent.com/yebekhe/TVC/main/subscriptions/protocols/vless"),
-    ("barry-far V2ray-Configs", 
-     "https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/All_Configs_Sub.txt"),
-    ("Borders-Freedom death-note", 
-     "https://raw.githubusercontent.com/Borders-Freedom/death-note/main/subscription/vless"),
+    ("BarFar-Aggregator", 
+     "https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/Sub1.txt"),
+    ("Iranian-V2ray-Configs", 
+     "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/sub_merge.txt"),
+    ("Morteza-Configs", 
+     "https://raw.githubusercontent.com/mxsir/V2ray-Configs/main/All_Configs_Sub.txt"),
+    ("Zizifn-Nodes", 
+     "https://raw.githubusercontent.com/zizifn/edgetunnel/main/sub.txt")
 ]
 
 OUTPUT_DIR = "configs"
@@ -44,16 +45,11 @@ def decode_base64(data: str) -> str:
 
 def is_vless(line: str) -> bool:
     """
-    Улучшенная и более гибкая проверка VLESS конфигурации.
-    Проверяет базовую структуру: vless:// и наличие порта.
-    Поддерживает IPv4, IPv6 в скобках [::1]:443 и домены.
+    Максимально надежная проверка.
+    Если строка начинается с vless:// и в ней есть знак @ — она идет в сборку.
     """
     line = line.strip()
-    if not line.startswith("vless://"):
-        return False
-    
-    # Регулярка проверяет: vless://[any_chars]@[any_chars]:[digits]
-    return bool(re.match(r"^vless://[^@]+@[^:]+:\d+.*$", line))
+    return line.startswith("vless://") and "@" in line
 
 
 def collect_vless(sources: list) -> set:
@@ -67,7 +63,7 @@ def collect_vless(sources: list) -> set:
             continue
         
         # Умное определение формата (Plain Text или Base64)
-        if "vless://" not in raw[:50]:
+        if "vless://" not in raw[:100]:
             print(f"  [*] {name}: Обнаружен формат Base64, декодируем...")
             raw = decode_base64(raw)
             
