@@ -6,18 +6,18 @@ import base64
 import random
 import requests
 
-# ── Новые, проверенные и безотказные источники VLESS ─────────────────────────
+# ── Новые, стабильные глобальные агрегаторы VLESS (без блокировок) ─────────
 VLESS_SOURCES = [
-    ("FreeV2Ray-API", 
-     "https://vless.freev2ray.org"),
-    ("Sub-F789-Mirror", 
-     "https://sub.f789.xyz/sub?target=vless"),
-    ("NodeFree-Aggregator", 
+    ("V2rayCN-API", 
+     "https://raw.githubusercontent.com/v2raycn/v2raycn/main/vless.txt"),
+    ("BypassNets", 
+     "https://raw.githubusercontent.com/WilliamStar007/ClashX-V2Ray-TopFreeProxy/main/vless.txt"),
+    ("NodeFree-Global", 
      "https://nodefree.org/dy/vless.txt")
 ]
 
 OUTPUT_DIR = "configs"
-MAX_CONFIGS = 200  # Твой лимит на количество конфигураций
+MAX_CONFIGS = 200  # Жесткий лимит
 
 
 def fetch(url: str) -> str:
