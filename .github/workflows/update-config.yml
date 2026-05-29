@@ -22,6 +22,10 @@ jobs:
         with:
           python-version: "3.12"
 
+      # ЭТОТ ШАГ ОБЯЗАТЕЛЕН: Установка зависимости
+      - name: Install dependencies
+        run: pip install requests
+
       - name: Run collector
         run: python scripts/check_configs.py
 
@@ -33,7 +37,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit."
           else
-            # Извлекаем количество собранных VLESS конфигураций из нового stats.json
             STATS=$(python -c "import json; d=json.load(open('configs/stats.json')); print(f\"vless={d['total_configs']}\")")
             git commit -m "chore: auto-update configs [$STATS] $(date -u +'%Y-%m-%d %H:%M UTC')"
             git push
