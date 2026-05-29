@@ -6,22 +6,27 @@ import base64
 import random
 import requests
 
-# Используем независимые глобальные API, которые не блокируют запросы от GitHub
+# ── Самые жирные и обновляемые базы VLESS ──────────────────────────────────
 VLESS_SOURCES = [
-    ("Bypass-API", "https://sub.f789.xyz/sub?target=vless"),
-    ("NodeFree-API", "https://nodefree.org/dy/vless.txt")
+    ("Igareck-Vless", 
+     "https://raw.githubusercontent.com/igareck/vless/main/vless.txt"),
+    ("Mahdibland-Merge", 
+     "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/sub_merge.txt"),
+    ("Yebekhe-TVC", 
+     "https://raw.githubusercontent.com/yebekhe/TVC/main/subscriptions/protocols/vless")
 ]
 
 OUTPUT_DIR = "configs"
-MAX_CONFIGS = 200  # Твой лимит
+MAX_CONFIGS = 200  # Жесткий лимит количества
 
 
 def fetch(url: str) -> str:
+    """Скачивает данные из репозиториев"""
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
     }
     try:
-        response = requests.get(url, headers=headers, timeout=20)
+        response = requests.get(url, headers=headers, timeout=30)
         if response.status_code == 200:
             return response.text.strip()
         return ""
@@ -30,6 +35,7 @@ def fetch(url: str) -> str:
 
 
 def decode_base64(data: str) -> str:
+    """Безопасно декодирует Base64, если база зашифрована"""
     clean_data = "".join(data.split())
     missing_padding = len(clean_data) % 4
     if missing_padding:
@@ -41,49 +47,58 @@ def decode_base64(data: str) -> str:
 
 
 def is_vless(line: str) -> bool:
+    """Проверяет, является ли строка VLESS-ссылкой"""
     line = line.strip()
     return line.startswith("vless://") and "@" in line
 
 
+def extract_vless_from_text(text: str) -> list:
+    """Вытаскивает все VLESS строки из текста"""
+    found = []
+    for line in text.splitlines():
+        line = line.strip()
+        if is_vless(line):
+            found.append(line)
+    return found
+
+
 def collect_vless(sources: list) -> set:
+    """Собирает прокси из всех баз данных"""
     result = set()
     
     for name, url in sources:
         raw = fetch(url)
-        if not raw or len(raw) < 15:
+        if not raw or len(raw) < 10:
             continue
             
-        # Если пришел зашифрованный в Base64 список, расшифровываем
-        if "vless://" not in raw[:200]:
-            raw = decode_base64(raw)
-            
-        lines = raw.splitlines()
-        source_configs = []
+        # Проверяем как обычный текст
+        source_configs = extract_vless_from_text(raw)
         
-        for line in lines:
-            line = line.strip()
-            if is_vless(line):
-                source_configs.append(line)
+        # Если не нашлось, пробуем декодировать из Base64
+        if not source_configs:
+            decoded = decode_base64(raw)
+            if decoded:
+                source_configs = extract_vless_from_text(decoded)
                 
         if source_configs:
-            print(f"  [+] {name}: Успешно собрано {len(source_configs)} конфигов.")
+            print(f"  [+] {name}: Успешно вытащили {len(source_configs)} конфигураций.")
             result.update(source_configs)
-            
+        
     return result
 
 
 def save_subscriptions(configs: set):
+    """Перемешивает, режет до 200 штук и сохраняет файлы подписок"""
     configs_list = list(configs)
     
-    # Жестко режем до 200 случайных штук
+    # Перемешиваем и берем ровно 200 штук
     if len(configs_list) > MAX_CONFIGS:
         random.shuffle(configs_list)
         configs_list = configs_list[:MAX_CONFIGS]
-        print(f"  [*] Список урезан до {MAX_CONFIGS} случайных конфигураций.")
+        print(f"  [*] Применен лимит: выбрано {MAX_CONFIGS} случайных прокси.")
         
     if not configs_list:
-        # Если и тут глухо, ставим хотя бы рабочий тестовый публичный сервер, чтобы не было пустоты
-        configs_list = ["vless://b742de2d-1064-44aa-b441-df332f14aa41@8.219.183.125:443?encryption=none&security=reality&sni=yahoo.com&fp=chrome&pbk=76WwO-gRMDpZ8jE8Q1_qfG_v_7pW3S3C4S_N-w&sid=6ba85230#Резервный_Сервер"]
+        configs_list = ["vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=tls#No_Configs_Available"]
 
     plain_text = "\n".join(sorted(configs_list)) + "\n"
     b64_text = base64.b64encode(plain_text.encode('utf-8')).decode('utf-8')
@@ -100,7 +115,7 @@ def save_subscriptions(configs: set):
 
 
 def main():
-    print("=== СБОР НАСТОЯЩИХ VLESS КОНФИГОВ ===")
+    print("=== ЗАПУСК ПАРСЕРА ИЗ РЕАЛЬНЫХ БАЗ ДАННЫХ ===")
     start = time.time()
 
     vless_configs = collect_vless(VLESS_SOURCES)
@@ -116,7 +131,7 @@ def main():
     with open(f"{OUTPUT_DIR}/stats.json", "w", encoding="utf-8") as f:
         json.dump(stats, f, indent=2)
         
-    print(f"Успешно сохранено реальных строк: {total_saved}")
+    print(f"Готово! Сохранено реальных прокси: {total_saved}")
 
 
 if __name__ == "__main__":
