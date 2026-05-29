@@ -43,17 +43,16 @@ jobs:
 
       - name: Commit and Push updates
         run: |
-          git add configs/vless_plain.txt \
-                  configs/vless_base64.txt \
-                  configs/vless_ipv6_plain.txt \
-                  configs/vless_ipv6_base64.txt \
-                  configs/stats.json
+          git add configs/vless_plain.txt configs/vless_base64.txt configs/stats.json
+
+          [ -f configs/vless_ipv6_plain.txt ] && git add configs/vless_ipv6_plain.txt || true
+          [ -f configs/vless_ipv6_base64.txt ] && git add configs/vless_ipv6_base64.txt || true
 
           if git diff --cached --quiet; then
             echo "No changes detected. Skipping commit."
           else
             TOTAL=$(python -c "import json; d=json.load(open('configs/stats.json')); print(d['total_configs'])")
-            IPV6=$(python -c "import json; d=json.load(open('configs/stats.json')); print(d['ipv6_configs'])")
+            IPV6=$(python -c "import json; d=json.load(open('configs/stats.json')); print(d.get('ipv6_configs', 0))")
             git commit -m "chore: auto-update configs [total=$TOTAL ipv6=$IPV6] $(date -u +'%Y-%m-%d %H:%M UTC')"
             git push origin main
           fi
