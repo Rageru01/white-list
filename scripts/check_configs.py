@@ -6,7 +6,7 @@ import base64
 import random
 import requests
 
-# ── Источники от igareck, mahdibland и топ-агрегаторов ──────────────────────
+# ── Лучшие и самые жирные базы (igareck, mahdibland, yebekhe) ────────────────
 VLESS_SOURCES = [
     ("Igareck-Vless", 
      "https://raw.githubusercontent.com/igareck/vless/main/vless.txt"),
@@ -21,7 +21,7 @@ MAX_CONFIGS = 200
 
 
 def fetch(url: str) -> str:
-    """Скачивает данные, обходя защиту серверов"""
+    """Скачивает сырые данные с серверов"""
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
     }
@@ -35,7 +35,7 @@ def fetch(url: str) -> str:
 
 
 def decode_base64(data: str) -> str:
-    """Декодирует входящий Base64 поток"""
+    """Безопасно декодирует Base64 поток"""
     clean_data = "".join(data.split())
     missing_padding = len(clean_data) % 4
     if missing_padding:
@@ -43,17 +43,27 @@ def decode_base64(data: str) -> str:
     try:
         return base64.b64decode(clean_data).decode('utf-8', errors='ignore')
     except Exception:
-        return data
+        return ""
 
 
 def is_vless(line: str) -> bool:
-    """Проверяет, является ли строка чистой VLESS ссылкой"""
+    """Проверяет, является ли строка VLESS ссылкой"""
     line = line.strip()
     return line.startswith("vless://") and "@" in line
 
 
+def extract_vless_from_text(text: str) -> list:
+    """Вытаскивает все VLESS строки из любого текстового блока"""
+    found = []
+    for line in text.splitlines():
+        line = line.strip()
+        if is_vless(line):
+            found.append(line)
+    return found
+
+
 def collect_vless(sources: list) -> set:
-    """Собирает, проверяет и очищает конфигурации"""
+    """Собирает конфигурации, проверяя оба формата по очереди"""
     result = set()
     
     for name, url in sources:
@@ -61,36 +71,33 @@ def collect_vless(sources: list) -> set:
         if not raw or len(raw) < 10:
             continue
             
-        print(f"  [*] {name}: Успешно скачано {len(raw)} байт.")
+        # Способ 1: Пробуем распарсить как обычный текст
+        source_configs = extract_vless_from_text(raw)
         
-        # Если источник зашифрован в Base64, расшифровываем его
-        if "vless://" not in raw[:300]:
-            raw = decode_base64(raw)
-            
-        lines = raw.splitlines()
-        source_configs = []
-        
-        for line in lines:
-            line = line.strip()
-            if is_vless(line):
-                source_configs.append(line)
+        # Способ 2: Если обычным текстом ничего не нашлось, пробуем декодировать из Base64
+        if not source_configs:
+            decoded = decode_base64(raw)
+            if decoded:
+                source_configs = extract_vless_from_text(decoded)
                 
         if source_configs:
-            print(f"  [+] {name}: Найдено {len(source_configs)} конфигураций.")
+            print(f"  [+] {name}: Успешно вытащили {len(source_configs)} конфигураций.")
             result.update(source_configs)
+        else:
+            print(f"  [-] {name}: Не удалось извлечь прокси (пусто или не тот формат).")
         
     return result
 
 
 def save_subscriptions(configs: set):
-    """Ограничивает до 200 штук и сохраняет файлы"""
+    """Ограничивает до 200 штук и сохраняет файлы подписок"""
     configs_list = list(configs)
     
-    # Если конфигов слишком много, перемешиваем и берем ровно 200 штук
+    # Если серверов куча, перемешиваем и берем ровно 200 случайных
     if len(configs_list) > MAX_CONFIGS:
         random.shuffle(configs_list)
         configs_list = configs_list[:MAX_CONFIGS]
-        print(f"  [*] Лимит! Выбрано {MAX_CONFIGS} случайных серверов.")
+        print(f"  [*] Сработало ограничение: выбрано {MAX_CONFIGS} случайных прокси.")
         
     if not configs_list:
         configs_list = ["vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=tls#No_Configs_Available_Try_Update_Later"]
@@ -110,11 +117,11 @@ def save_subscriptions(configs: set):
 
 
 def main():
-    print("=== ОБНОВЛЕНИЕ БАЗЫ VLESS (IGARECK & OTHERS) ===")
+    print("=== ОБНОВЛЕННЫЙ ТАРАННЫЙ ПАРСЕР VLESS ===")
     start = time.time()
 
     vless_configs = collect_vless(VLESS_SOURCES)
-    print(f"\nВсего уникальных конфигураций в куче: {len(vless_configs)}")
+    print(f"\nВсего уникальных конфигураций в обработке: {len(vless_configs)}")
 
     total_saved = save_subscriptions(vless_configs)
 
@@ -128,7 +135,7 @@ def main():
     with open(f"{OUTPUT_DIR}/stats.json", "w", encoding="utf-8") as f:
         json.dump(stats, f, indent=2)
         
-    print(f"Готово! Сохранено в подписку: {total_saved}")
+    print(f"Готово! Записано в файлы подписок: {total_saved}")
 
 
 if __name__ == "__main__":
