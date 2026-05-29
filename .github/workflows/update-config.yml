@@ -11,7 +11,6 @@ permissions:
 jobs:
   check-and-update:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
 
     steps:
       - name: Checkout repository
@@ -25,14 +24,12 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      # Жесткая очистка старых файлов, чтобы убрать системный глюк
       - name: Clear old configs
         run: rm -rf configs && mkdir -p configs
 
       - name: Run collector
         run: python scripts/check_configs.py
 
-      # Форсированное добавление созданных файлов в индекс git
       - name: Commit updated configs
         run: |
           git config user.name  "github-actions[bot]"
@@ -41,8 +38,8 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit."
           else
-            STATS=$(python -c "import json; d=json.load(open('configs/stats.json')); print(f\"vless={d['total_configs']}\")")
-            git commit -m "chore: auto-update configs [$STATS] $(date -u +'%Y-%m-%d %H:%M UTC')"
+            COUNT=$(python -c "import json; print(json.load(open('configs/stats.json'))['total_configs'])")
+            git commit -m "chore: auto-update configs [vless=$COUNT] $(date -u +'%Y-%m-%d %H:%M UTC')"
             git push
           fi
           
