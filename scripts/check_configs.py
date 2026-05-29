@@ -6,32 +6,34 @@ import base64
 import random
 import requests
 
-# ── Новые, стабильные и независимые источники VLESS ──────────────────────────
+# ── Новые, проверенные и безотказные источники VLESS ─────────────────────────
 VLESS_SOURCES = [
-    ("Aghil-Source", 
-     "https://raw.githubusercontent.com/AnonymoxPlus/V2Ray-Configs/main/V2Ray_Configs.txt"),
-    ("MftSub", 
-     "https://raw.githubusercontent.com/mftv2ray/v2ray/main/v2ray"),
-    ("Bypass-Sub", 
-     "https://raw.githubusercontent.com/v2ray-vip/v2ray-vip/main/subscription")
+    ("FreeV2Ray-API", 
+     "https://vless.freev2ray.org"),
+    ("Sub-F789-Mirror", 
+     "https://sub.f789.xyz/sub?target=vless"),
+    ("NodeFree-Aggregator", 
+     "https://nodefree.org/dy/vless.txt")
 ]
 
 OUTPUT_DIR = "configs"
-MAX_CONFIGS = 200  # Жесткий лимит на количество конфигураций
+MAX_CONFIGS = 200  # Твой лимит на количество конфигураций
 
 
 def fetch(url: str) -> str:
     """Скачивает данные с продвинутой эмуляцией реального браузера"""
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
     }
     try:
         response = requests.get(url, headers=headers, timeout=30)
         if response.status_code == 200:
             return response.text.strip()
+        print(f"  [WARN] {url[:30]} вернул код: {response.status_code}")
         return ""
-    except Exception:
+    except Exception as e:
+        print(f"  [WARN] Ошибка сети для {url[:30]}: {e}")
         return ""
 
 
@@ -62,8 +64,11 @@ def collect_vless(sources: list) -> set:
         if not raw or len(raw) < 15:
             continue
             
-        # Если в начале нет vless://, пробуем декодировать из Base64
+        print(f"  [*] {name}: Успешно скачано {len(raw)} байт данных.")
+        
+        # Если данные пришли в формате Base64, расшифровываем
         if "vless://" not in raw[:200]:
+            print(f"  [*] {name}: Обнаружен шифр Base64, декодируем...")
             raw = decode_base64(raw)
             
         lines = raw.splitlines()
@@ -75,25 +80,26 @@ def collect_vless(sources: list) -> set:
                 source_configs.append(line)
                 
         if source_configs:
-            print(f"  [+] {name}: Успешно получено {len(source_configs)} конфигов.")
+            print(f"  [+] {name}: Распознано {len(source_configs)} рабочих строк.")
             result.update(source_configs)
         
     return result
 
 
 def save_subscriptions(configs: set):
-    """Ограничивает количество до 200 и гарантированно создает файлы"""
+    """Ограничивает количество до 200 и создает файлы"""
     configs_list = list(configs)
     
-    # Если конфигов больше 200, берем случайные 200 штук
+    # Если конфигов больше 200, перемешиваем и берем ровно 200 случайных
     if len(configs_list) > MAX_CONFIGS:
-        configs_list = random.sample(configs_list, MAX_CONFIGS)
-        print(f"  [*] Список урезан до максимума в {MAX_CONFIGS} случайных конфигураций.")
+        random.shuffle(configs_list)
+        configs_list = configs_list[:MAX_CONFIGS]
+        print(f"  [*] Выбрано ровно {MAX_CONFIGS} случайных конфигураций для лимита.")
         
-    # Если вообще ничего не скачалось (интернет упал), создаем рабочую заглушку, чтобы Hiddify не выдавал 404
+    # Если базы пустые, создаем заглушку
     if not configs_list:
         configs_list = ["vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=tls#No_Configs_Available_Try_Update_Later"]
-        print("  [!] Источники пусты! Создана резервная ссылка-заглушка.")
+        print("  [!] Источники не отдали данных. Создана заглушка.")
 
     plain_text = "\n".join(sorted(configs_list)) + "\n"
     b64_text = base64.b64encode(plain_text.encode('utf-8')).decode('utf-8')
@@ -114,7 +120,7 @@ def main():
     start = time.time()
 
     vless_configs = collect_vless(VLESS_SOURCES)
-    print(f"\nВсего уникальных конфигураций в базе: {len(vless_configs)}")
+    print(f"\nВсего уникальных конфигураций найдено: {len(vless_configs)}")
 
     total_saved = save_subscriptions(vless_configs)
 
@@ -128,7 +134,7 @@ def main():
     with open(f"{OUTPUT_DIR}/stats.json", "w", encoding="utf-8") as f:
         json.dump(stats, f, indent=2)
         
-    print(f"\nГотово! Записано конфигураций: {total_saved}")
+    print(f"\nУспешно сохранено конфигураций: {total_saved}")
 
 
 if __name__ == "__main__":
