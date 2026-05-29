@@ -1,252 +1,208 @@
 #!/usr/bin/env python3
 """
-VLESS Config Aggregator
-Собирает из GitHub-зеркал Telegram-каналов и крупных агрегаторов.
-Приоритет: REALITY > Россия > IPv6 > остальные.
-Каждый выходной файл ограничен TARGET_KB килобайт.
+VLESS Config Aggregator — только популярные и проверенные источники.
+Упор на Россию, REALITY (обход РКН/DPI), IPv6.
 """
 import os, time, json, base64, random, re
 import requests
 
+# ══════════════════════════════════════════════════════════════════
+# ИСТОЧНИКИ — только популярные, с известными названиями
+# ══════════════════════════════════════════════════════════════════
 SOURCES = [
-    {   "name": "soroushmirzaei-vless",
-        "urls": ["https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/protocols/vless"],
-        "priority": 10 },
+
+    # ── Telegram-каналы (самые популярные русскоязычные) ──────────
+
+    {   # igareck — Игорь Ецкало, один из самых известных в РФ
+        "name": "igareck",
+        "urls": ["https://t.me/s/igareck"],
+        "priority": 10, "tg": True, "tags": ["russia"] },
+
+    {   # vpnKeys — крупнейший русский канал с ключами
+        "name": "vpnKeys",
+        "urls": ["https://t.me/s/vpnKeys"],
+        "priority": 10, "tg": True },
+
+    {   # freevpnkeys — популярный русский канал
+        "name": "freevpnkeys",
+        "urls": ["https://t.me/s/freevpnkeys"],
+        "priority": 9, "tg": True },
+
+    {   # outline_keysss — ключи Outline/VLESS
+        "name": "outline_keysss",
+        "urls": ["https://t.me/s/outline_keysss"],
+        "priority": 9, "tg": True },
+
+    {   # vpn_fail — новости и ключи, популярный в РФ
+        "name": "vpn_fail",
+        "urls": ["https://t.me/s/vpn_fail"],
+        "priority": 9, "tg": True, "tags": ["russia"] },
+
+    {   # antiblock_soft — обход блокировок РФ
+        "name": "antiblock_soft",
+        "urls": ["https://t.me/s/antiblock_soft"],
+        "priority": 9, "tg": True, "tags": ["russia"] },
+
+    {   # vlessfree — популярный канал с VLESS
+        "name": "vlessfree",
+        "urls": ["https://t.me/s/vlessfree"],
+        "priority": 9, "tg": True },
+
+    {   # v2rayng_configs — большой пул конфигов
+        "name": "v2rayng_configs",
+        "urls": ["https://t.me/s/v2rayng_configs"],
+        "priority": 9, "tg": True },
+
+    {   # v2ray_configs_pool — один из самых крупных
+        "name": "v2ray_configs_pool",
+        "urls": ["https://t.me/s/v2ray_configs_pool"],
+        "priority": 9, "tg": True },
+
+    {   # VPN_Everyday — ежедневные обновления
+        "name": "VPN_Everyday",
+        "urls": ["https://t.me/s/VPN_Everyday"],
+        "priority": 8, "tg": True },
+
+    {   # ProxyMTProto — популярный в РФ
+        "name": "ProxyMTProto",
+        "urls": ["https://t.me/s/ProxyMTProto"],
+        "priority": 8, "tg": True, "tags": ["russia"] },
+
+    {   # free_vpn_outline — Outline ключи
+        "name": "free_vpn_outline",
+        "urls": ["https://t.me/s/free_vpn_outline"],
+        "priority": 8, "tg": True },
+
+    {   # DirectVPN — прямые конфиги
+        "name": "DirectVPN",
+        "urls": ["https://t.me/s/DirectVPN"],
+        "priority": 8, "tg": True },
+
+    {   # PrivateVPNs
+        "name": "PrivateVPNs",
+        "urls": ["https://t.me/s/PrivateVPNs"],
+        "priority": 8, "tg": True },
+
+    {   # proxy_mtn — активный канал
+        "name": "proxy_mtn",
+        "urls": ["https://t.me/s/proxy_mtn"],
+        "priority": 8, "tg": True },
+
+    {   # ConfigsHUB — агрегатор
+        "name": "ConfigsHUB",
+        "urls": ["https://t.me/s/ConfigsHUB"],
+        "priority": 8, "tg": True },
+
+    {   # iP_CF — Cloudflare IP (хорошо работает в РФ)
+        "name": "iP_CF",
+        "urls": ["https://t.me/s/iP_CF"],
+        "priority": 8, "tg": True },
+
+    {   # vless_vmess_v2rayng
+        "name": "vless_vmess_v2rayng",
+        "urls": ["https://t.me/s/vless_vmess_v2rayng"],
+        "priority": 8, "tg": True },
+
+    # ── GitHub — только крупные и популярные репозитории ─────────
+
+    {   # soroushmirzaei — самый крупный агрегатор TG-каналов
+        # Есть срез по России (страна RU) — конфиги отображаются в Hiddify
+        "name": "soroushmirzaei-russia",
+        "urls": [
+            "https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/countries/ru/vless",
+        ],
+        "priority": 10, "tags": ["russia"] },
+
     {   "name": "soroushmirzaei-reality",
         "urls": ["https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/reality"],
         "priority": 10, "tags": ["reality"] },
+
     {   "name": "soroushmirzaei-ipv6",
         "urls": ["https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/ipv6"],
         "priority": 9, "tags": ["ipv6"] },
-    {   "name": "soroushmirzaei-russia",
-        "urls": [
-            "https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/countries/ru/vless",
-            "https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/countries/ru/mixed",
-        ],
-        "priority": 10, "tags": ["russia"] },
-    {   "name": "MrMohebi-vless",
-        "urls": ["https://raw.githubusercontent.com/MrMohebi/xray-proxy-grabber-telegram/master/collected-proxies/row-url/vless.txt"],
-        "priority": 9 },
-    {   "name": "MrMohebi-all",
-        "urls": ["https://raw.githubusercontent.com/MrMohebi/xray-proxy-grabber-telegram/master/collected-proxies/row-url/all.txt"],
-        "priority": 9 },
-    {   "name": "Surfboardv2ray-tgparse",
-        "urls": ["https://raw.githubusercontent.com/Surfboardv2ray/TGParse/main/vless.txt"],
-        "priority": 9 },
-    {   "name": "Surfboardv2ray-russia",
+
+    {   # Surfboardv2ray — парсит TG + сортирует по странам
+        "name": "Surfboardv2ray-russia",
         "urls": [
             "https://raw.githubusercontent.com/Surfboardv2ray/Proxy-sorter/main/Russia/Vless.txt",
             "https://raw.githubusercontent.com/Surfboardv2ray/Proxy-sorter/main/Russia/Reality.txt",
         ],
         "priority": 9, "tags": ["russia"] },
+
     {   "name": "Surfboardv2ray-reality",
         "urls": ["https://raw.githubusercontent.com/Surfboardv2ray/Proxy-sorter/main/Reality/Vless.txt"],
         "priority": 9, "tags": ["reality"] },
+
     {   "name": "Surfboardv2ray-ipv6",
         "urls": ["https://raw.githubusercontent.com/Surfboardv2ray/Proxy-sorter/main/IPv6/Vless.txt"],
         "priority": 8, "tags": ["ipv6"] },
-    {   "name": "yebekhe-vless",
-        "urls": ["https://raw.githubusercontent.com/yebekhe/TVC/main/subscriptions/protocols/vless"],
-        "priority": 9 },
-    {   "name": "yebekhe-reality",
-        "urls": ["https://raw.githubusercontent.com/yebekhe/TVC/main/subscriptions/protocols/reality"],
-        "priority": 9, "tags": ["reality"] },
-    {   "name": "yebekhe-russia",
-        "urls": ["https://raw.githubusercontent.com/yebekhe/TVC/main/subscriptions/countries/ru/mix"],
-        "priority": 9, "tags": ["russia"] },
-    {   "name": "yebekhe-ipv6",
-        "urls": ["https://raw.githubusercontent.com/yebekhe/TVC/main/subscriptions/splitted/ipv6"],
-        "priority": 8, "tags": ["ipv6"] },
-    {   "name": "Epodonios-vless",
-        "urls": ["https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Configs/vless.txt"],
-        "priority": 8 },
-    {   "name": "Epodonios-all",
-        "urls": ["https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Configs/All_Configs_Sub.txt"],
-        "priority": 8 },
-    {   "name": "barry-far-all",
+
+    {   # barry-far — один из старейших, ~15k звёзд на GitHub
+        "name": "barry-far",
         "urls": ["https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/All_Configs_Sub.txt"],
         "priority": 8 },
-    {   "name": "barry-far-sub6",
-        "urls": ["https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/Sub6.txt"],
-        "priority": 8 },
-    {   "name": "barry-far-sub7",
-        "urls": ["https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/Sub7.txt"],
-        "priority": 8 },
-    {   "name": "mahdibland-vless",
+
+    {   # MrMohebi — прямой парсинг Telegram, актуальные конфиги
+        "name": "MrMohebi",
+        "urls": ["https://raw.githubusercontent.com/MrMohebi/xray-proxy-grabber-telegram/master/collected-proxies/row-url/vless.txt"],
+        "priority": 9 },
+
+    {   # mahdibland — крупный merger, годами обновляется
+        "name": "mahdibland-vless",
         "urls": ["https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/sub_merge_vless.txt"],
         "priority": 8 },
+
     {   "name": "mahdibland-reality",
         "urls": ["https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/splitted/reality.txt"],
         "priority": 8, "tags": ["reality"] },
-    {   "name": "mahdibland-ipv6",
-        "urls": ["https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/splitted/ipv6.txt"],
-        "priority": 7, "tags": ["ipv6"] },
-    {   "name": "lagzian-reality",
-        "urls": ["https://raw.githubusercontent.com/lagzian/SS-Collector/main/VLESS/reality.txt"],
-        "priority": 9, "tags": ["reality"] },
-    {   "name": "lagzian-vless",
-        "urls": ["https://raw.githubusercontent.com/lagzian/SS-Collector/main/VLESS/vless.txt"],
+
+    {   # yebekhe/TVC — популярный сборник TG-каналов
+        "name": "yebekhe-vless",
+        "urls": ["https://raw.githubusercontent.com/yebekhe/TVC/main/subscriptions/protocols/vless"],
         "priority": 8 },
-    {   "name": "lagzian-ipv6",
-        "urls": ["https://raw.githubusercontent.com/lagzian/SS-Collector/main/VLESS/ipv6.txt"],
-        "priority": 8, "tags": ["ipv6"] },
+
+    {   "name": "yebekhe-reality",
+        "urls": ["https://raw.githubusercontent.com/yebekhe/TVC/main/subscriptions/protocols/reality"],
+        "priority": 8, "tags": ["reality"] },
+
+    {   "name": "yebekhe-russia",
+        "urls": ["https://raw.githubusercontent.com/yebekhe/TVC/main/subscriptions/countries/ru/mix"],
+        "priority": 9, "tags": ["russia"] },
+
+    {   # coldwater — REALITY + Россия
+        "name": "coldwater-russia",
+        "urls": [
+            "https://raw.githubusercontent.com/coldwater-10/V2Hub/main/Russia",
+        ],
+        "priority": 9, "tags": ["russia"] },
+
     {   "name": "coldwater-reality",
         "urls": ["https://raw.githubusercontent.com/coldwater-10/V2rayCollector/main/vless_reality.txt"],
         "priority": 9, "tags": ["reality"] },
-    {   "name": "coldwater-vless",
-        "urls": ["https://raw.githubusercontent.com/coldwater-10/V2rayCollector/main/vless.txt"],
+
+    {   # lagzian — REALITY специализация
+        "name": "lagzian-reality",
+        "urls": ["https://raw.githubusercontent.com/lagzian/SS-Collector/main/VLESS/reality.txt"],
+        "priority": 9, "tags": ["reality"] },
+
+    {   "name": "lagzian-ipv6",
+        "urls": ["https://raw.githubusercontent.com/lagzian/SS-Collector/main/VLESS/ipv6.txt"],
+        "priority": 8, "tags": ["ipv6"] },
+
+    {   # Epodonios — ежедневно обновляемый агрегатор
+        "name": "Epodonios",
+        "urls": ["https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Configs/vless.txt"],
         "priority": 8 },
-    {   "name": "coldwater-russia",
-        "urls": [
-            "https://raw.githubusercontent.com/coldwater-10/V2Hub/main/Russia",
-            "https://raw.githubusercontent.com/coldwater-10/V2rayCollector/main/vless_russia.txt",
-        ],
-        "priority": 9, "tags": ["russia"] },
-    {   "name": "SoliSpirit-reality",
-        "urls": ["https://raw.githubusercontent.com/SoliSpirit/v2ray-configs/main/reality.txt"],
-        "priority": 8, "tags": ["reality"] },
-    {   "name": "SoliSpirit-vless",
-        "urls": ["https://raw.githubusercontent.com/SoliSpirit/v2ray-configs/main/vless.txt"],
-        "priority": 7 },
-    {   "name": "MatinKh98-reality",
-        "urls": ["https://raw.githubusercontent.com/MatinKh98/v2ray-subscribe/main/subscribe/reality.txt"],
-        "priority": 8, "tags": ["reality"] },
-    {   "name": "MatinKh98-vless",
-        "urls": ["https://raw.githubusercontent.com/MatinKh98/v2ray-subscribe/main/subscribe/vless.txt"],
-        "priority": 7 },
-    {   "name": "ALIILAPRO-sub",
+
+    {   # ALIILAPRO — стабильный источник
+        "name": "ALIILAPRO",
         "urls": ["https://raw.githubusercontent.com/ALIILAPRO/v2rayNG-Config/main/sub.txt"],
         "priority": 8 },
-    {   "name": "v2rayse-russia",
+
+    {   # v2rayse — Россия
+        "name": "v2rayse-russia",
         "urls": ["https://raw.githubusercontent.com/v2rayse/node-list/main/data/ru.txt"],
         "priority": 8, "tags": ["russia"] },
-    {   "name": "Proxifly-russia",
-        "urls": [
-            "https://raw.githubusercontent.com/Proxifly/free-proxy-list/main/proxies/countries/RU/data.txt",
-            "https://raw.githubusercontent.com/Proxifly/free-proxy-list/main/proxies/protocols/vless/data.txt",
-        ],
-        "priority": 8, "tags": ["russia"] },
-    {   "name": "vakhov-ru",
-        "urls": ["https://raw.githubusercontent.com/vakhov/fresh-proxy-list/master/vless.txt"],
-        "priority": 7, "tags": ["russia"] },
-    {   "name": "mheidari98-vless",
-        "urls": ["https://raw.githubusercontent.com/mheidari98/.proxy/main/vless"],
-        "priority": 7 },
-    {   "name": "saeeddev94-vless",
-        "urls": ["https://raw.githubusercontent.com/saeeddev94/xray-boot/master/vless.txt"],
-        "priority": 7 },
-    {   "name": "mfuu-vless",
-        "urls": ["https://raw.githubusercontent.com/mfuu/v2ray/master/vless.txt"],
-        "priority": 7 },
-    {   "name": "ermaozi-vless",
-        "urls": ["https://raw.githubusercontent.com/ermaozi/get_subscribe/main/subscribe/vless.txt"],
-        "priority": 7 },
-    {   "name": "Leon406-vless",
-        "urls": ["https://raw.githubusercontent.com/Leon406/SubCrawler/main/sub/share/vless"],
-        "priority": 7 },
-    {   "name": "arshiacomplus-vless",
-        "urls": ["https://raw.githubusercontent.com/arshiacomplus/v2rayExtractor/main/vless.txt"],
-        "priority": 7 },
-    {   "name": "resasanian-vless",
-        "urls": ["https://raw.githubusercontent.com/resasanian/Mirza/main/vless.txt"],
-        "priority": 7 },
-    {   "name": "IranianCypherpunks",
-        "urls": ["https://raw.githubusercontent.com/IranianCypherpunks/sub/main/vlessconfig"],
-        "priority": 7 },
-    {   "name": "awesome-vpn",
-        "urls": ["https://raw.githubusercontent.com/awesome-vpn/awesome-vpn/master/all"],
-        "priority": 6 },
-    {   "name": "freefq",
-        "urls": ["https://raw.githubusercontent.com/freefq/free/master/v2"],
-        "priority": 6 },
-    {   "name": "peasoft",
-        "urls": ["https://raw.githubusercontent.com/peasoft/NoMoreWalls/master/list.txt"],
-        "priority": 6 },
-    {   "name": "vpei",
-        "urls": ["https://raw.githubusercontent.com/vpei/Free-Node-Merge/main/o/node.txt"],
-        "priority": 6 },
-    {   "name": "aiboboxx",
-        "urls": ["https://raw.githubusercontent.com/aiboboxx/v2rayfree/main/v2"],
-        "priority": 6 },
-    {   "name": "roosterkid-vless",
-        "urls": ["https://raw.githubusercontent.com/roosterkid/openproxylist/main/VLESS_RAW.txt"],
-        "priority": 6 },
-    {   "name": "WilliamStar-vless",
-        "urls": ["https://raw.githubusercontent.com/WilliamStar007/ClashX-V2Ray-TopFreeProxy/main/combine/vlesssub.txt"],
-        "priority": 6 },
-    {   "name": "liketolivefree-vless",
-        "urls": ["https://raw.githubusercontent.com/liketolivefree/kobabi/main/vless.txt"],
-        "priority": 6 },
-    {   "name": "a2470982985-nodes",
-        "urls": ["https://raw.githubusercontent.com/a2470982985/getNode/main/v2ray.txt"],
-        "priority": 5 },
-    {   "name": "Barabama-v2rayse",
-        "urls": ["https://raw.githubusercontent.com/Barabama/FreeNodes/master/nodes/v2rayse.txt"],
-        "priority": 5 },
-    {   "name": "tbbatbb",
-        "urls": ["https://raw.githubusercontent.com/tbbatbb/Proxy/master/dist/v2ray.config.txt"],
-        "priority": 5 },
-    {   "name": "Pawdroid",
-        "urls": ["https://raw.githubusercontent.com/Pawdroid/Free-servers/main/sub"],
-        "priority": 5 },
-    {   "name": "HW7X-vless",
-        "urls": ["https://raw.githubusercontent.com/HW7X/vless-config/main/vless.txt"],
-        "priority": 5 },
-    {   "name": "w1770938096",
-        "urls": [
-            "https://raw.githubusercontent.com/w1770938096/proxy/main/vless.txt",
-            "https://raw.githubusercontent.com/w1770938096/proxy/main/sub6.txt",
-        ],
-        "priority": 5 },
-    {   "name": "rxn957",
-        "urls": ["https://raw.githubusercontent.com/rxn957/rxn957/main/vless.txt"],
-        "priority": 5 },
-    # ── Публичные Telegram-каналы ──
-    {   "name": "tg-v2ray_configs_pool",
-        "urls": ["https://t.me/s/v2ray_configs_pool"],
-        "priority": 9, "tg": True },
-    {   "name": "tg-VlessConfig",
-        "urls": ["https://t.me/s/VlessConfig"],
-        "priority": 9, "tg": True },
-    {   "name": "tg-proxy_mtn",
-        "urls": ["https://t.me/s/proxy_mtn"],
-        "priority": 8, "tg": True },
-    {   "name": "tg-DirectVPN",
-        "urls": ["https://t.me/s/DirectVPN"],
-        "priority": 8, "tg": True },
-    {   "name": "tg-freev2rayssr",
-        "urls": ["https://t.me/s/freev2rayssr"],
-        "priority": 8, "tg": True },
-    {   "name": "tg-FreeV2rays",
-        "urls": ["https://t.me/s/FreeV2rays"],
-        "priority": 8, "tg": True },
-    {   "name": "tg-V2rayFarsi",
-        "urls": ["https://t.me/s/V2rayFarsi"],
-        "priority": 8, "tg": True },
-    {   "name": "tg-iP_CF",
-        "urls": ["https://t.me/s/iP_CF"],
-        "priority": 8, "tg": True },
-    {   "name": "tg-ConfigsHUB",
-        "urls": ["https://t.me/s/ConfigsHUB"],
-        "priority": 8, "tg": True },
-    {   "name": "tg-PrivateVPNs",
-        "urls": ["https://t.me/s/PrivateVPNs"],
-        "priority": 8, "tg": True },
-    {   "name": "tg-ShadowsocksM",
-        "urls": ["https://t.me/s/ShadowsocksM"],
-        "priority": 7, "tg": True },
-    {   "name": "tg-vless_vmess_v2rayng",
-        "urls": ["https://t.me/s/vless_vmess_v2rayng"],
-        "priority": 8, "tg": True },
-    {   "name": "tg-v2ray_outlinekey",
-        "urls": ["https://t.me/s/v2ray_outlinekey"],
-        "priority": 7, "tg": True },
-    {   "name": "tg-vmessiran",
-        "urls": ["https://t.me/s/vmessiran"],
-        "priority": 7, "tg": True },
-    {   "name": "tg-proxystore11",
-        "urls": ["https://t.me/s/proxystore11"],
-        "priority": 7, "tg": True },
 ]
 
 OUTPUT_DIR   = "configs"
@@ -301,7 +257,7 @@ def is_ipv6(cfg: str) -> bool:
 
 
 def is_reality(cfg: str) -> bool:
-    return "security=reality" in cfg.lower() or "reality" in cfg.lower()
+    return "security=reality" in cfg.lower()
 
 
 def config_fingerprint(cfg: str) -> str:
@@ -338,8 +294,6 @@ def extract_vless(text: str) -> list:
 
 
 def sanitize_tag(label: str) -> str:
-    """Только безопасные символы в #фрагменте URL."""
-    label = re.sub(r"^tg-", "TG_", label)
     label = re.sub(r"[^A-Za-z0-9._\-]", "_", label)
     return label[:50]
 
@@ -356,17 +310,16 @@ def trim_to_size(configs: list, max_bytes: int) -> list:
     result = []
     total  = 0
     for cfg in configs:
-        line_bytes = len((cfg + "\n").encode("utf-8"))
-        if total + line_bytes > max_bytes:
+        lb = len((cfg + "\n").encode("utf-8"))
+        if total + lb > max_bytes:
             break
         result.append(cfg)
-        total += line_bytes
+        total += lb
     return result
 
 
 def save(filename: str, configs_list: list) -> int:
     configs_list = trim_to_size(configs_list, TARGET_BYTES)
-    # Финальная проверка: только валидные vless:// строки без пробелов
     clean = [c.strip() for c in configs_list
              if c.strip().startswith("vless://") and "@" in c and " " not in c.split("#")[0]]
     if not clean:
@@ -438,8 +391,7 @@ def main():
 
             if is_ipv6(cfg)    or "ipv6"    in tags: ipv6_set.add(cfg)
             if is_reality(cfg) or "reality" in tags: reality_set.add(cfg)
-            if "russia" in tags or "russia" in name.lower():
-                russia_set.add(cfg)
+            if "russia" in tags:                     russia_set.add(cfg)
 
         source_stats[name] = added
         print(f"  Добавлено: {added}  "
@@ -487,7 +439,6 @@ def main():
         json.dump(stats, f, indent=2, ensure_ascii=False)
 
     print(f"\nГотово за {stats['elapsed_seconds']}с")
-    print(f"\nПодписки:")
     print(f"  Все      → configs/vless_base64.txt          ({n_all} конфигов)")
     print(f"  REALITY  → configs/vless_reality_base64.txt  ({n_reality} конфигов)")
     print(f"  Россия   → configs/vless_russia_base64.txt   ({n_russia} конфигов)")
