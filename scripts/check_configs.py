@@ -4,57 +4,40 @@ import time
 import json
 import base64
 import random
+import re
 import requests
 
-SOURCES_POOL = [
+GITHUB_SOURCES = [
     {
         "name": "barry-far",
-        "urls": [
-            "https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/All_Configs_Sub.txt",
-        ]
+        "urls": ["https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/All_Configs_Sub.txt"]
     },
     {
         "name": "soroushmirzaei",
-        "urls": [
-            "https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/protocols/vless",
-        ]
-    },
-    {
-        "name": "Epodonios",
-        "urls": [
-            "https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Configs/vless.txt",
-        ]
+        "urls": ["https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/protocols/vless"]
     },
     {
         "name": "mahdibland",
-        "urls": [
-            "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/sub_merge_vless.txt",
-        ]
-    },
-    {
-        "name": "peasoft",
-        "urls": [
-            "https://raw.githubusercontent.com/peasoft/NoMoreWalls/master/list.txt",
-        ]
+        "urls": ["https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/sub_merge_vless.txt"]
     },
     {
         "name": "mfuu",
-        "urls": [
-            "https://raw.githubusercontent.com/mfuu/v2ray/master/vless.txt",
-        ]
+        "urls": ["https://raw.githubusercontent.com/mfuu/v2ray/master/vless.txt"]
     },
     {
         "name": "yebekhe",
-        "urls": [
-            "https://raw.githubusercontent.com/yebekhe/TVC/main/subscriptions/protocols/vless",
-        ]
+        "urls": ["https://raw.githubusercontent.com/yebekhe/TVC/main/subscriptions/protocols/vless"]
     },
-    {
-        "name": "awesome-vpn",
-        "urls": [
-            "https://raw.githubusercontent.com/awesome-vpn/awesome-vpn/master/all",
-        ]
-    },
+]
+
+TELEGRAM_CHANNELS = [
+    "v2rayng_config",
+    "vlessconfig",
+    "reality_config",
+    "freev2rayssr",
+    "ConfigsHUB",
+    "v2ray_configs_pool",
+    "proxy_mtproto_v2ray",
 ]
 
 OUTPUT_DIR = "configs"
@@ -74,6 +57,35 @@ def fetch(urls: list) -> str:
         except Exception as e:
             print(f"    ERROR: {url} — {e}")
     return ""
+
+
+def fetch_telegram(channel: str) -> list:
+    """Парсит публичный веб-просмотр Telegram канала"""
+    url = f"https://t.me/s/{channel}"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    }
+    try:
+        r = requests.get(url, headers=headers, timeout=20)
+        if r.status_code != 200:
+            print(f"    FAIL {r.status_code}: {url}")
+            return []
+
+        # Ищем все vless:// ссылки в HTML странице
+        found = re.findall(r'vless://[^\s\'"<>&]+', r.text)
+        # Декодируем HTML entities
+        cleaned = []
+        for cfg in found:
+            cfg = cfg.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+            if "@" in cfg:
+                cleaned.append(cfg)
+
+        print(f"    OK: {url} — найдено {len(cleaned)}")
+        return cleaned
+
+    except Exception as e:
+        print(f"    ERROR: {url} — {e}")
+        return []
 
 
 def decode_base64(data: str) -> str:
@@ -99,7 +111,9 @@ def main():
     start = time.time()
     unique = set()
 
-    for source in SOURCES_POOL:
+    # GitHub источники
+    print("\n── GitHub источники ──")
+    for source in GITHUB_SOURCES:
         name = source["name"]
         print(f"\n[{name}]")
         raw = fetch(source["urls"])
@@ -120,6 +134,18 @@ def main():
             unique.update(extracted)
         else:
             print(f"  VLESS строк не найдено")
+
+    # Telegram каналы
+    print("\n── Telegram каналы ──")
+    for channel in TELEGRAM_CHANNELS:
+        print(f"\n[@{channel}]")
+        found = fetch_telegram(channel)
+        if found:
+            unique.update(found)
+        else:
+            print(f"  Конфигов не найдено")
+        # Пауза чтобы не получить бан
+        time.sleep(2)
 
     configs = list(unique)
     print(f"\nВсего уникальных: {len(configs)}")
